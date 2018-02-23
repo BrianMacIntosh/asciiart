@@ -402,8 +402,8 @@ overlayLetters = function(imask, imaskWidth, imaskHeight, tilesX, tilesY,
 	callback)
 {
 	var input = [];
-	for (var tx = 0; tx < tilesX; tx++)
 	for (var ty = 0; ty < tilesY; ty++)
+	for (var tx = 0; tx < tilesX; tx++)
 	{
 		input.push({x: tx, y: ty});
 	}
@@ -424,7 +424,8 @@ overlayLetters = function(imask, imaskWidth, imaskHeight, tilesX, tilesY,
 	mask = imask;
 	maskWidth = imaskWidth;
 	inverseMatchWt = iinverseMatchWt;
-	input.map(overlayLetter).then(callback);
+
+	callback(input.map(overlayLetter));
 }
 
 //TEMP:
