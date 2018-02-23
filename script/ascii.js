@@ -134,15 +134,15 @@ parseLetters = function(lettersImage)
 	letterHeight = lettersImage.height / lettersY;
 	letterAspect = letterWidth / letterHeight;
 	var index = 32;
-	for (var y = 0; y < lettersY; y++)
-	for (var x = 0; x < lettersX; x++)
+	for (var y = 0; y < lettersY; ++y)
+	for (var x = 0; x < lettersX; ++x)
 	{
 		var pixels = new Float32Array(letterWidth * letterHeight);
 		var filledPixels = 0;
 		var iy = y * letterHeight;
 		var ix = x * letterWidth;
-		for (var y2 = 0; y2 < letterHeight; y2++)
-		for (var x2 = 0; x2 < letterWidth; x2++)
+		for (var y2 = 0; y2 < letterHeight; ++y2)
+		for (var x2 = 0; x2 < letterWidth; ++x2)
 		{
 			var i2 = x2 + y2 * letterWidth;
 			var i = (x * letterWidth + x2 + (y * letterHeight + y2) * lettersImage.width) * 4;
@@ -297,12 +297,13 @@ getGreyscale = function(data)
 		throw "getGreyscale: input array size is not divisble by 4";
 	}
 	var grey = new Float32Array(pixels);
-	for (var i = 0; i < pixels; i++)
+	for (var i = 0; i < pixels; ++i)
 	{
 		var i4 = i * 4;
-		grey[i] = (data[i4 + 0] * 0.21
-			+ data[i4 + 1] * 0.72
-			+ data[i4 + 2] * 0.07) / 255.0;
+		grey[i] = (data[i4 + 0] * 0.105
+			+ data[i4 + 1] * 0.36
+			+ data[i4 + 2] * 0.035
+			+ data[i4 + 3] * 0.50) / 255.0;
 	}
 	return grey;
 }
@@ -314,35 +315,45 @@ getEdges = function(greyData, width, height)
 	var edges = new Float32Array(greyData.length);
 	
 	// vertical pass
-	for (var x = 0; x < width; x++)
+	var ymax = height - 1;
+	for (var x = 0; x < width; ++x)
+	for (var y = 0; y < ymax; ++y)
 	{
-		for (var y = 0; y < height - 1; y++)
-		{
-			var i = x + y * width;
-			var inext = x + (y + 1) * width;
-			edges[i] += Math.abs(greyData[i] - greyData[inext]);
-		}
+		var i = x + y * width;
+		var inext = x + (y + 1) * width;
+		edges[i] += Math.abs(greyData[i] - greyData[inext]);
 	}
 
 	// horizontal pass
-	for (var x = 0; x < width; x++)
+	var xmax = width - 1;
+	for (var x = 0; x < xmax; ++x)
+	for (var y = 0; y < height; ++y)
 	{
-		for (var y = 0; y < height - 1; y++)
-		{
-			var i = x + y * width;
-			var inext = (x + 1) + y * width;
-			edges[i] += Math.abs(greyData[i] - greyData[inext]);
-		}
+		var i = x + y * width;
+		var inext = (x + 1) + y * width;
+		edges[i] += Math.abs(greyData[i] - greyData[inext]);
 	}
 
 	return edges;
+}
+
+/// Dilates the specified float image data
+dilate = function(data, neighborhood)
+{
+	//TODO:
+}
+
+/// Erodes the specified float image data
+erode = function(data, neighborhood)
+{
+	//TODO:
 }
 
 /// Thresholds the specified float array
 thresholdFloats = function(data, threshold)
 {
 	var thresholded = new Float32Array(data.length);
-	for (var i = 0; i < data.length; i++)
+	for (var i = 0; i < data.length; ++i)
 	{
 		thresholded[i] = data[i] > threshold ? 1.0 : 0.0;
 	}
@@ -353,7 +364,7 @@ thresholdFloats = function(data, threshold)
 greyFloatToRGBA = function(greyData)
 {
 	var rgba = new Uint8ClampedArray(greyData.length * 4);
-	for (var i = 0; i < greyData.length; i++)
+	for (var i = 0; i < greyData.length; ++i)
 	{
 		var v = greyData[i] * 255;
 		rgba[i * 4 + 0] = v;
@@ -370,25 +381,27 @@ floatToHackyFastSDF = function(inData, width, height, falloff)
 	var out = new Float32Array(inData);
 
 	// right/down pass
-	for (var x = 0; x < width - 1; x++)
-	for (var y = 0; y < height - 1; y++)
+	var xmax = width - 1;
+	var ymax = height - 1;
+	for (var x = 0; x < xmax; ++x)
+	for (var y = 0; y < ymax; ++y)
 	{
-		var i = x + y * width;
+		var ival = out[x + y * width] - falloff;
 		var ix = (x + 1) + y * width;
 		var iy = x + (y + 1) * width;
-		out[ix] = Math.max(out[ix], out[i] - falloff);
-		out[iy] = Math.max(out[iy], out[i] - falloff);
+		out[ix] = Math.max(out[ix], ival);
+		out[iy] = Math.max(out[iy], ival);
 	}
 
 	// left/up pass
-	for (var x = width - 1; x > 0; x--)
-	for (var y = height - 1; y > 0; y--)
+	for (var x = width - 1; x > 0; --x)
+	for (var y = height - 1; y > 0; --y)
 	{
-		var i = x + y * width;
+		var ival = out[x + y * width] - falloff;
 		var ix = (x - 1) + y * width;
 		var iy = x + (y - 1) * width;
-		out[ix] = Math.max(out[ix], out[i] - falloff);
-		out[iy] = Math.max(out[iy], out[i] - falloff);
+		out[ix] = Math.max(out[ix], ival);
+		out[iy] = Math.max(out[iy], ival);
 	}
 
 	return out;
@@ -402,12 +415,12 @@ overlayLetters = function(imask, imaskWidth, imaskHeight, tilesX, tilesY,
 	callback)
 {
 	var input = [];
-	for (var ty = 0; ty < tilesY; ty++)
-	for (var tx = 0; tx < tilesX; tx++)
+	for (var ty = 0; ty < tilesY; ++ty)
+	for (var tx = 0; tx < tilesX; ++tx)
 	{
 		input.push({x: tx, y: ty});
 	}
-	var task = new Parallel(input/*,
+	/*var task = new Parallel(input,
 	{
 		env: {
 			letterWidth: letterWidth,
@@ -418,7 +431,7 @@ overlayLetters = function(imask, imaskWidth, imaskHeight, tilesX, tilesY,
 			//maskHeight: maskHeight,
 			inverseMatchWt: inverseMatchWt,
 		}
-	}*/);
+	});*/
 	//task.map(overlayLetter).then(callback);
 
 	mask = imask;
@@ -446,11 +459,9 @@ overlayLetter = function(t)
 	var maskWidth = global.env.maskWidth;
 	var inverseMatchWt = global.env.inverseMatchWt;*/
 
-	var originX = t.x * letterWidth;
-	var originY = t.y * letterHeight;
-	var originI = originX + originY * maskWidth;
+	var originI = t.x * letterWidth + t.y * letterHeight * maskWidth;
 
-	for (var char = 32; char < 128; ++char)
+	for (var char = 32; char < 127; ++char)
 	{
 		var rating = 0;
 		var inverseRating = 0;
@@ -458,10 +469,8 @@ overlayLetter = function(t)
 		for (var x = 0; x < letterWidth; ++x)
 		for (var y = 0; y < letterHeight; ++y)
 		{
-			var li = x + y * letterWidth;
-			var oi = x + y * maskWidth + originI;
-			var letterValue = charData.pixels[li];
-			var maskValue = mask[oi];
+			var letterValue = charData.pixels[x + y * letterWidth];
+			var maskValue = mask[x + y * maskWidth + originI];
 
 			// bonus for convolution match
 			rating += letterValue * maskValue;
@@ -489,16 +498,17 @@ lettersToImage = function(lettersGrid, outWidth, outHeight, tilesX, tilesY)
 {
 	var final = new Float32Array(outWidth * outHeight);
 
-	for (var tx = 0; tx < tilesX; tx++)
-	for (var ty = 0; ty < tilesY; ty++)
+	for (var tx = 0; tx < tilesX; ++tx)
+	for (var ty = 0; ty < tilesY; ++ty)
 	{
+		var originI = tx * letterWidth + ty * letterHeight * outWidth
+		var letterPixels = letterData[lettersGrid[tx + ty * tilesX]].pixels;
+
 		// copy the best character into the output buffer
-		for (var x = 0; x < letterWidth; x++)
-		for (var y = 0; y < letterHeight; y++)
+		for (var x = 0; x < letterWidth; ++x)
+		for (var y = 0; y < letterHeight; ++y)
 		{
-			var li = x + y * letterWidth;
-			var oi = x + tx * letterWidth + (y + ty * letterHeight) * outWidth;
-			final[oi] = letterData[lettersGrid[tx + ty * tilesX]].pixels[li];
+			final[x + y * outWidth + originI] = letterPixels[x + y * letterWidth];
 		}
 	}
 
