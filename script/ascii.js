@@ -424,7 +424,7 @@ overlayLetters = function(imask, imaskWidth, imaskHeight, tilesX, tilesY,
 	mask = imask;
 	maskWidth = imaskWidth;
 	inverseMatchWt = iinverseMatchWt;
-
+	
 	callback(input.map(overlayLetter));
 }
 
@@ -446,25 +446,32 @@ overlayLetter = function(t)
 	var maskWidth = global.env.maskWidth;
 	var inverseMatchWt = global.env.inverseMatchWt;*/
 
-	for (var char = 32; char < 128; char++)
+	var originX = t.x * letterWidth;
+	var originY = t.y * letterHeight;
+	var originI = originX + originY * maskWidth;
+
+	for (var char = 32; char < 128; ++char)
 	{
 		var rating = 0;
-		for (var x = 0; x < letterWidth; x++)
-		for (var y = 0; y < letterHeight; y++)
+		var inverseRating = 0;
+		var charData = letterData[char];
+		for (var x = 0; x < letterWidth; ++x)
+		for (var y = 0; y < letterHeight; ++y)
 		{
 			var li = x + y * letterWidth;
-			var oi = x + t.x * letterWidth + (y + t.y * letterHeight) * maskWidth;
-			var letterValue = letterData[char].pixels[li];
-			
-			// bonus for convolution match
-			rating += letterValue * mask[oi];
+			var oi = x + y * maskWidth + originI;
+			var letterValue = charData.pixels[li];
+			var maskValue = mask[oi];
 
+			// bonus for convolution match
+			rating += letterValue * maskValue;
+			
 			// penalty for convolution match with inverse
-			rating -= inverseMatchWt * letterValue * (1.0 - mask[oi]);
+			inverseRating += letterValue * (1.0 - maskValue);
 		}
 
-		// apply character weight
-		rating *= letterData[char].weight;
+		// sum, apply character weight
+		rating = (rating - inverseMatchWt * inverseRating) * charData.weight;
 
 		if (rating > bestRating)
 		{
