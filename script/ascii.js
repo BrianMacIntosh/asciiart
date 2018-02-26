@@ -204,7 +204,7 @@ onFileInput = function()
 {
 	var fileElement = document.getElementById("filereader");
 	if (fileElement.files.length == 0) return;
-	
+
 	console.log("Load image from file...");
 	console.log("File: " + fileElement.files[0].name);
 
@@ -328,7 +328,7 @@ onOverlayLettersComplete = function(result)
 produceImageFinal = function()
 {
 	finalImage = lettersToImage(letterChars,
-		rawImageData.width, rawImageData.width,
+		rawImageData.width, rawImageData.height,
 		outputTilesX, outputTilesY)
 
 	productionStep = Math.max(productionStep, 3);
