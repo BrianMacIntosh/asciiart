@@ -1,6 +1,49 @@
 //TODO:
 //- what if user inputs image before letters are loaded?
 
+// A 2D array of floating-point data
+var LiteImageData = function(data, width, height)
+{
+	this.data = data;
+	this.width = width;
+	this.height = height;
+}
+
+LiteImageData.prototype.toCanvasImageData = function()
+{
+	var rgba = this.data;
+	if (rgba instanceof Float32Array)
+	{
+		rgba = greyFloatToRGBA(this.data);
+	}
+	return new ImageData(rgba, this.width, this.height);
+}
+
+var Kernel = function(data, width, height, centerX, centerY)
+{
+	LiteImageData.call(this, data, width, height);
+	this.centerX = centerX;
+	this.centerY = centerY;
+}
+
+Kernel.prototype = new LiteImageData();
+
+// params:
+// oobValue - value to use for out-of-bounds pixels
+// buffer: optional buffer to put the results in
+Kernel.prototype.convolute = function(data, params, buffer)
+{
+	for (var dx = 0; dx < data.width; ++dx)
+	for (var dy = 0; dy < data.height; ++dy)
+	{
+		for (var kx = 0; kx < this.width; ++kx)
+		for (var ky = 0; ky < this.height; ++ky)
+		{
+			//TOOD:
+		}
+	}
+}
+
 // the source image being used
 loadedImage = null;
 
@@ -49,6 +92,7 @@ outputY = 0; // height of the output
 outputTilesX = 0; // horizontal tiles in the output
 outputTilesY = 0; // vertical tiles in the output
 productionStep = -1; // the highest production step reached so far for this image
+rawImageData = null; // input image (ImageData)
 rawGreyData = null; // greyscale input data (Float32Array)
 edgeDetected = null; // edge-detected data (Float32Array)
 thresholded = null; // thresholded (Float32Array)
@@ -100,10 +144,11 @@ onProcessStepChanged = function()
 	startFromStep = Math.min(productionStep + 1, startFromStep);
 	switch (startFromStep)
 	{
-		case 0: produceImageEdges(); break;
-		case 1: produceImageThresholds(); break;
-		case 2: produceImageSdf(); break;
-		case 3: produceImageLetters(); break;
+		case 0: produceGreyscale(); break;
+		case 1: produceImageEdges(); break;
+		case 2: produceImageThresholds(); break;
+		case 3: produceImageSdf(); break;
+		case 4: produceImageLetters(); break;
 	}
 }
 
@@ -212,22 +257,31 @@ produceImage = function()
 	scratchCtx.drawImage(loadedImage,
 		0, 0, sourceX, sourceY,
 		0, 0, outputX, outputY);
-	var rawImageData = scratchCtx.getImageData(0, 0, outputX, outputY);
+	rawImageData = scratchCtx.getImageData(0, 0, outputX, outputY);
 
+	produceGreyscale();
+}
+
+produceGreyscale = function()
+{
 	// greyscale the data
-	rawGreyData = getGreyscale(rawImageData.data);
+	rawGreyData = getGreyscale(new LiteImageData(rawImageData.data, outputX, outputY));
 
-	produceImageEdges();
+	productionStep = Math.max(productionStep, 0);
+	if (processStepSlider.value <= 0)
+		showOutput(rawGreyData);
+	else
+		produceImageEdges();
 }
 
 produceImageEdges = function()
 {
 	// edge detection
-	edgeDetected = getEdges(rawGreyData, outputX, outputY);
+	edgeDetected = getEdges(rawGreyData);
 
-	productionStep = Math.max(productionStep, 0);
-	if (processStepSlider.value <= 0)
-		showOutput(greyFloatToRGBA(edgeDetected));
+	productionStep = Math.max(productionStep, 1);
+	if (processStepSlider.value <= 1)
+		showOutput(edgeDetected);
 	else
 		produceImageThresholds();
 }
@@ -237,9 +291,9 @@ produceImageThresholds = function()
 	// threshold
 	thresholded = thresholdFloats(edgeDetected, thresholdSlider.value);
 
-	productionStep = Math.max(productionStep, 1);
-	if (processStepSlider.value <= 1)
-		showOutput(greyFloatToRGBA(thresholded));
+	productionStep = Math.max(productionStep, 2);
+	if (processStepSlider.value <= 2)
+		showOutput(thresholded);
 	else
 		produceImageSdf();
 }
@@ -247,18 +301,18 @@ produceImageThresholds = function()
 produceImageSdf = function()
 {
 	// compute the distance field for the thresholded image
-	sdf = floatToHackyFastSDF(thresholded, outputX, outputY, sdfFalloffSlider.value);
+	sdf = floatToHackyFastSDF(thresholded, sdfFalloffSlider.value);
 
-	productionStep = Math.max(productionStep, 2);
-	if (processStepSlider.value <= 2)
-		showOutput(greyFloatToRGBA(sdf));
+	productionStep = Math.max(productionStep, 3);
+	if (processStepSlider.value <= 3)
+		showOutput(sdf);
 	else
 		produceImageLetters();
 }
 
 produceImageLetters = function()
 {
-	overlayLetters(sdf, outputX, outputY, outputTilesX, outputTilesY,
+	overlayLetters(sdf, outputTilesX, outputTilesY,
 		inverseMatchSlider.value,
 		onOverlayLettersComplete);
 }
@@ -275,22 +329,27 @@ produceImageFinal = function()
 	finalImage = lettersToImage(letterChars, outputX, outputY, outputTilesX, outputTilesY)
 
 	productionStep = Math.max(productionStep, 3);
-	showOutput(greyFloatToRGBA(finalImage));
+	showOutput(finalImage);
 }
 
-showOutput = function(rgbaData)
+showOutput = function(imageData)
 {
 	// output
-	outputCanvas.width = outputX;
-	outputCanvas.height = outputY;
-	var outputImageData = new ImageData(rgbaData, outputX, outputY);
+	outputCanvas.width = imageData.width;
+	outputCanvas.height = imageData.height;
+	var outputImageData = imageData.toCanvasImageData();
 	outputCtx.putImageData(outputImageData, 0, 0);
 }
 
 /// Returns an array of greyscale values for each pixel in the data
 /// Expects data as RGBA
-getGreyscale = function(data)
+getGreyscale = function(imageData)
 {
+	if (!(imageData instanceof LiteImageData))
+	{
+		throw "'imageData' is not a LiteImageData";
+	}
+	var data = imageData.data;
 	var pixels = data.length / 4;
 	if (pixels != Math.floor(pixels))
 	{
@@ -305,14 +364,21 @@ getGreyscale = function(data)
 			+ data[i4 + 2] * 0.035
 			+ data[i4 + 3] * 0.50) / 255.0;
 	}
-	return grey;
+	return new LiteImageData(grey, imageData.width, imageData.height);
 }
 
 /// Returns an array of 0-1 values for edge-detected pixels
 /// Expects an array of one value per pixel
-getEdges = function(greyData, width, height)
+getEdges = function(imageData)
 {
-	var edges = new Float32Array(greyData.length);
+	if (!(imageData instanceof LiteImageData))
+	{
+		throw "'imageData' is not a LiteImageData";
+	}
+	var data = imageData.data;
+	var width = imageData.width;
+	var height = imageData.height;
+	var edges = new Float32Array(data.length);
 	
 	// vertical pass
 	var ymax = height - 1;
@@ -321,7 +387,7 @@ getEdges = function(greyData, width, height)
 	{
 		var i = x + y * width;
 		var inext = x + (y + 1) * width;
-		edges[i] += Math.abs(greyData[i] - greyData[inext]);
+		edges[i] += Math.abs(data[i] - data[inext]);
 	}
 
 	// horizontal pass
@@ -331,54 +397,74 @@ getEdges = function(greyData, width, height)
 	{
 		var i = x + y * width;
 		var inext = (x + 1) + y * width;
-		edges[i] += Math.abs(greyData[i] - greyData[inext]);
+		edges[i] += Math.abs(data[i] - data[inext]);
 	}
 
-	return edges;
+	return new LiteImageData(edges, imageData.width, imageData.height);
 }
 
 /// Dilates the specified float image data
-dilate = function(data, neighborhood)
+dilate = function(imageData, neighborhood)
 {
+	if (!(imageData instanceof LiteImageData))
+	{
+		throw "'imageData' is not a LiteImageData";
+	}
 	//TODO:
 }
 
 /// Erodes the specified float image data
-erode = function(data, neighborhood)
+erode = function(imageData, neighborhood)
 {
+	if (!(imageData instanceof LiteImageData))
+	{
+		throw "'imageData' is not a LiteImageData";
+	}
 	//TODO:
 }
 
 /// Thresholds the specified float array
-thresholdFloats = function(data, threshold)
+thresholdFloats = function(imageData, threshold)
 {
+	if (!(imageData instanceof LiteImageData))
+	{
+		throw "'imageData' is not a LiteImageData";
+	}
+	var data = imageData.data;
 	var thresholded = new Float32Array(data.length);
 	for (var i = 0; i < data.length; ++i)
 	{
 		thresholded[i] = data[i] > threshold ? 1.0 : 0.0;
 	}
-	return thresholded;
+	return new LiteImageData(thresholded, imageData.width, imageData.height);
 }
 
 /// Converts a greyscale (float) array to an RGBA byte array
-greyFloatToRGBA = function(greyData)
+greyFloatToRGBA = function(data)
 {
-	var rgba = new Uint8ClampedArray(greyData.length * 4);
-	for (var i = 0; i < greyData.length; ++i)
+	var rgba = new Uint8ClampedArray(data.length * 4);
+	for (var i = 0; i < data.length; ++i)
 	{
-		var v = greyData[i] * 255;
-		rgba[i * 4 + 0] = v;
-		rgba[i * 4 + 1] = v;
-		rgba[i * 4 + 2] = v;
-		rgba[i * 4 + 3] = 255;
+		var v = data[i] * 255;
+		var i4 = i * 4;
+		rgba[i4 + 0] = v;
+		rgba[i4 + 1] = v;
+		rgba[i4 + 2] = v;
+		rgba[i4 + 3] = 255;
 	}
 	return rgba;
 }
 
 /// Converts a float array to a signed distance field array
-floatToHackyFastSDF = function(inData, width, height, falloff)
+floatToHackyFastSDF = function(imageData, falloff)
 {
-	var out = new Float32Array(inData);
+	if (!(imageData instanceof LiteImageData))
+	{
+		throw "'imageData' is not a LiteImageData";
+	}
+	var width = imageData.width;
+	var height = imageData.height;
+	var out = new Float32Array(imageData.data);
 
 	// right/down pass
 	var xmax = width - 1;
@@ -404,16 +490,20 @@ floatToHackyFastSDF = function(inData, width, height, falloff)
 		out[iy] = Math.max(out[iy], ival);
 	}
 
-	return out;
+	return new LiteImageData(out, width, height);
 }
 
 /// decides which letter to use for each tile
 /// expects input as a Float32Array
 /// ouputs a 2D Uint8Array of character ASCII codes
-overlayLetters = function(imask, imaskWidth, imaskHeight, tilesX, tilesY,
+overlayLetters = function(imask, tilesX, tilesY,
 	iinverseMatchWt,
 	callback)
 {
+	if (!(imask instanceof LiteImageData))
+	{
+		throw "'imask' is not a LiteImageData";
+	}
 	var input = [];
 	for (var ty = 0; ty < tilesY; ++ty)
 	for (var tx = 0; tx < tilesX; ++tx)
@@ -427,15 +517,12 @@ overlayLetters = function(imask, imaskWidth, imaskHeight, tilesX, tilesY,
 			letterHeight: letterHeight,
 			letterData: letterData,
 			mask: mask,
-			maskWidth: maskWidth,
-			//maskHeight: maskHeight,
 			inverseMatchWt: inverseMatchWt,
 		}
 	});*/
 	//task.map(overlayLetter).then(callback);
 
 	mask = imask;
-	maskWidth = imaskWidth;
 	inverseMatchWt = iinverseMatchWt;
 	
 	callback(input.map(overlayLetter));
@@ -443,7 +530,6 @@ overlayLetters = function(imask, imaskWidth, imaskHeight, tilesX, tilesY,
 
 //TEMP:
 mask = null;
-maskWidth = 0;
 inverseMatchWt = 0;
 
 /// Map target function. Decides what character to use for the specified tile
@@ -456,10 +542,9 @@ overlayLetter = function(t)
 	var letterHeight = global.env.letterHeight;
 	var letterData = global.env.letterData;
 	var mask = global.env.mask;
-	var maskWidth = global.env.maskWidth;
 	var inverseMatchWt = global.env.inverseMatchWt;*/
 
-	var originI = t.x * letterWidth + t.y * letterHeight * maskWidth;
+	var originI = t.x * letterWidth + t.y * letterHeight * mask.width;
 
 	for (var char = 32; char < 127; ++char)
 	{
@@ -470,7 +555,7 @@ overlayLetter = function(t)
 		for (var y = 0; y < letterHeight; ++y)
 		{
 			var letterValue = charData.pixels[x + y * letterWidth];
-			var maskValue = mask[x + y * maskWidth + originI];
+			var maskValue = mask.data[x + y * mask.width + originI];
 
 			// bonus for convolution match
 			rating += letterValue * maskValue;
@@ -512,5 +597,5 @@ lettersToImage = function(lettersGrid, outWidth, outHeight, tilesX, tilesY)
 		}
 	}
 
-	return final;
+	return new LiteImageData(final, outWidth, outHeight);
 }
