@@ -87,12 +87,10 @@ sdfFalloffSlider = null;
 inverseMatchSlider = null;
 processStepSlider = null;
 
-outputX = 0; // width of the output
-outputY = 0; // height of the output
 outputTilesX = 0; // horizontal tiles in the output
 outputTilesY = 0; // vertical tiles in the output
 productionStep = -1; // the highest production step reached so far for this image
-rawImageData = null; // input image (ImageData)
+rawImageData = null; // input image (Uint8ClampedArray RGBA)
 rawGreyData = null; // greyscale input data (Float32Array)
 edgeDetected = null; // edge-detected data (Float32Array)
 thresholded = null; // thresholded (Float32Array)
@@ -205,6 +203,8 @@ parseLetters = function(lettersImage)
 onFileInput = function()
 {
 	var fileElement = document.getElementById("filereader");
+	if (fileElement.files.length == 0) return;
+	
 	console.log("Load image from file...");
 	console.log("File: " + fileElement.files[0].name);
 
@@ -244,8 +244,8 @@ produceImage = function()
 	outputTilesY = 40;
 	var outputTilesXFloat = outputTilesY * aspectRatio / letterAspect;
 	outputTilesX = Math.ceil(outputTilesXFloat);
-	outputX = outputTilesX * letterWidth;
-	outputY = outputTilesY * letterHeight;
+	var outputX = outputTilesX * letterWidth;
+	var outputY = outputTilesY * letterHeight;
 	var outputTilesXRemainder = outputTilesX - outputTilesXFloat;
 	var outputXMargin = outputTilesXRemainder * letterWidth / 2;
 
@@ -257,7 +257,8 @@ produceImage = function()
 	scratchCtx.drawImage(loadedImage,
 		0, 0, sourceX, sourceY,
 		0, 0, outputX, outputY);
-	rawImageData = scratchCtx.getImageData(0, 0, outputX, outputY);
+	var imageData = scratchCtx.getImageData(0, 0, outputX, outputY);
+	rawImageData = new LiteImageData(imageData.data, outputX, outputY)
 
 	produceGreyscale();
 }
@@ -265,7 +266,7 @@ produceImage = function()
 produceGreyscale = function()
 {
 	// greyscale the data
-	rawGreyData = getGreyscale(new LiteImageData(rawImageData.data, outputX, outputY));
+	rawGreyData = getGreyscale(rawImageData);
 
 	productionStep = Math.max(productionStep, 0);
 	if (processStepSlider.value <= 0)
@@ -326,7 +327,9 @@ onOverlayLettersComplete = function(result)
 
 produceImageFinal = function()
 {
-	finalImage = lettersToImage(letterChars, outputX, outputY, outputTilesX, outputTilesY)
+	finalImage = lettersToImage(letterChars,
+		rawImageData.width, rawImageData.width,
+		outputTilesX, outputTilesY)
 
 	productionStep = Math.max(productionStep, 3);
 	showOutput(finalImage);
