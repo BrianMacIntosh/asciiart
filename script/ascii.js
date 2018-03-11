@@ -28,20 +28,81 @@ var Kernel = function(data, width, height, centerX, centerY)
 
 Kernel.prototype = new LiteImageData();
 
+Kernel.accumulateMax = function(accum, data, kernel)
+{
+	return Math.max(accum, data * kernel);
+}
+
+Kernel.accumulateMin = function(accum, data, kernel)
+{
+	return kernel > 0 ? Math.min(accum, data) : accum;
+}
+
+Kernel.accumulateSum = function(accum, data, kernel)
+{
+	return accum + data * kernel;
+}
+
 // params:
-// oobValue - value to use for out-of-bounds pixels
+//   oobValue - value to use for out-of-bounds pixels
 // buffer: optional buffer to put the results in
 Kernel.prototype.convolute = function(data, params, buffer)
 {
+	params = params || {};
+	params.accumulateFn = params.accumulateFn || Kernel.accumulateSum;
+	return this.convoluteFn(data, params, buffer);
+}
+
+// returns the minimum convolution of the specified image with the kernel
+// params:
+//   oobValue - value to use for out-of-bounds pixels
+// buffer: optional buffer to put the results in
+Kernel.prototype.convoluteMin = function(data, params, buffer)
+{
+	params = params || {};
+	params.oobValue = params.oobValue === undefined ? 1 : params.oobValue;
+	params.accumulateFn = params.accumulateFn || Kernel.accumulateMin;
+	return this.convoluteFn(data, params, buffer);
+}
+
+// returns the maximum convolution of the specified image with the kernel
+// params:
+//   oobValue - value to use for out-of-bounds pixels
+// buffer: optional buffer to put the results in
+Kernel.prototype.convoluteMax = function(data, params, buffer)
+{
+	params = params || {};
+	params.oobValue = params.oobValue === undefined ? 0 : params.oobValue;
+	params.accumulateFn = params.accumulateFn || Kernel.accumulateMax;
+	return this.convoluteFn(data, params, buffer);
+}
+
+Kernel.prototype.convoluteFn = function(data, params, buffer)
+{
+	var buffer = buffer || new Float32Array(data.data.length);
+	var oobValue = params.oobValue === undefined ? 0 : params.oobValue;
 	for (var dx = 0; dx < data.width; ++dx)
 	for (var dy = 0; dy < data.height; ++dy)
 	{
-		for (var kx = 0; kx < this.width; ++kx)
-		for (var ky = 0; ky < this.height; ++ky)
+		var di = dx + dy * data.width;
+		var result = oobValue;
+		var earlyOut = false;
+		for (var kx = 0; !earlyOut && kx < this.width; ++kx)
+		for (var ky = 0; !earlyOut && ky < this.height; ++ky)
 		{
-			//TOOD:
+			var ki = kx + ky * this.width;
+			var dki = di + kx - this.centerX + (ky - this.centerY) * data.width;
+			var imageValue = data.data[dki];
+			if (imageValue === undefined)
+			{
+				imageValue = oobValue;
+			}
+			result = params.accumulateFn(result, imageValue, this.data[ki]);
+			earlyOut = params.earlyOutFn && params.earlyOutFn(result);
 		}
+		buffer[di] = result;
 	}
+	return new LiteImageData(buffer, data.width, data.height);
 }
 
 // the source image being used
@@ -83,8 +144,11 @@ scratchCtx = null;
 outputCanvas = null;
 outputCtx = null;
 thresholdSlider = null;
-sdfFalloffSlider = null;
+dilateSlider = null;
+erodeSlider = null;
+sdfRadiusSlider = null;
 inverseMatchSlider = null;
+allowedJitterSlider = null;
 processStepSlider = null;
 
 outputTilesX = 0; // horizontal tiles in the output
@@ -94,9 +158,14 @@ rawImageData = null; // input image (Uint8ClampedArray RGBA)
 rawGreyData = null; // greyscale input data (Float32Array)
 edgeDetected = null; // edge-detected data (Float32Array)
 thresholded = null; // thresholded (Float32Array)
+dilated = null;
+eroded = null;
 sdf = null; // sdf (Float32Array)
 letterChars = null; // Uint8Array of chars in the output grid
 finalImage = null; // final image with matched letters (Float32Array)
+
+dilateKernel = null;
+erodeKernel = null;
 
 onDomLoaded = function()
 {
@@ -109,16 +178,27 @@ onDomLoaded = function()
 	thresholdSlider = document.getElementById("thresholdSlider");
 	thresholdSlider.addEventListener("change", onThresholdChanged);
 
-	sdfFalloffSlider = document.getElementById("sdfFalloffSlider");
-	sdfFalloffSlider.addEventListener("change", onSdfFalloffChanged);
+	dilateSlider = document.getElementById("dilateSlider");
+	dilateSlider.addEventListener("change", onDilateChanged);
+
+	erodeSlider = document.getElementById("erodeSlider");
+	erodeSlider.addEventListener("change", onErodeChanged);
+
+	sdfRadiusSlider = document.getElementById("sdfRadiusSlider");
+	sdfRadiusSlider.addEventListener("change", onSdfRadiusChanged);
 
 	inverseMatchSlider = document.getElementById("inverseMatchSlider");
 	inverseMatchSlider.addEventListener("change", onInverseMatchWeightChanged);
+
+	allowedJitterSlider = document.getElementById("allowedJitterSlider");
+	allowedJitterSlider.addEventListener("change", onAllowedJitterChanged);
 
 	processStepSlider = document.getElementById("processStepSlider");
 	processStepSlider.addEventListener("change", onProcessStepChanged);
 
 	loadLetters();
+	createDilateKernel();
+	createErodeKernel();
 }
 
 onThresholdChanged = function(e)
@@ -126,12 +206,29 @@ onThresholdChanged = function(e)
 	produceImageThresholds();
 }
 
-onSdfFalloffChanged = function(e)
+onDilateChanged = function(e)
+{
+	createDilateKernel();
+	produceImageDilate();
+}
+
+onErodeChanged = function(e)
+{
+	createErodeKernel();
+	produceImageErode();
+}
+
+onSdfRadiusChanged = function(e)
 {
 	produceImageSdf();
 }
 
 onInverseMatchWeightChanged = function(e)
+{
+	produceImageLetters();
+}
+
+onAllowedJitterChanged = function(e)
 {
 	produceImageLetters();
 }
@@ -142,11 +239,14 @@ onProcessStepChanged = function()
 	startFromStep = Math.min(productionStep + 1, startFromStep);
 	switch (startFromStep)
 	{
-		case 0: produceGreyscale(); break;
-		case 1: produceImageEdges(); break;
-		case 2: produceImageThresholds(); break;
-		case 3: produceImageSdf(); break;
-		case 4: produceImageLetters(); break;
+		case 0: produceRawImage(); break;
+		case 1: produceGreyscale(); break;
+		case 2: produceImageEdges(); break;
+		case 3: produceImageThresholds(); break;
+		case 4: produceImageDilate(); break;
+		case 5: produceImageErode(); break;
+		case 6: produceImageSdf(); break;
+		case 7: produceImageLetters(); break;
 	}
 }
 
@@ -158,6 +258,36 @@ loadLetters = function()
 		parseLetters(lettersImage);
 	}
 	lettersImage.src = "letters.png";
+}
+
+createDilateKernel = function()
+{
+	var kernelSize = parseInt(dilateSlider.value);
+	dilateKernel = createCircleKernel(kernelSize);
+}
+
+createErodeKernel = function()
+{
+	var kernelSize = parseInt(erodeSlider.value);
+	erodeKernel = createCircleKernel(kernelSize);
+}
+
+createCircleKernel = function(radius)
+{
+	var kernelSize = radius * 2 + 1;
+	var center = radius;
+	var radiusSq = radius * radius;
+	var data = new Float32Array(kernelSize * kernelSize);
+	for (var x = 0; x < kernelSize; x++)
+	for (var y = 0; y < kernelSize; y++)
+	{
+		var dx = (center - x);
+		var dy = (center - y);
+		var dSq = dx * dx + dy * dy;
+		var di = x + y * kernelSize;
+		data[di] = dSq <= radiusSq ? 1 : 0;
+	}
+	return new Kernel(data, kernelSize, kernelSize, radius + 1, radius + 1);
 }
 
 // splits and prepares the letter template image
@@ -260,7 +390,16 @@ produceImage = function()
 	var imageData = scratchCtx.getImageData(0, 0, outputX, outputY);
 	rawImageData = new LiteImageData(imageData.data, outputX, outputY)
 
-	produceGreyscale();
+	produceRawImage();
+}
+
+produceRawImage = function()
+{
+	productionStep = Math.max(productionStep, 0);
+	if (processStepSlider.value <= 0)
+		showOutput(rawImageData);
+	else
+		produceGreyscale();
 }
 
 produceGreyscale = function()
@@ -268,8 +407,8 @@ produceGreyscale = function()
 	// greyscale the data
 	rawGreyData = getGreyscale(rawImageData);
 
-	productionStep = Math.max(productionStep, 0);
-	if (processStepSlider.value <= 0)
+	productionStep = Math.max(productionStep, 1);
+	if (processStepSlider.value <= 1)
 		showOutput(rawGreyData);
 	else
 		produceImageEdges();
@@ -280,8 +419,8 @@ produceImageEdges = function()
 	// edge detection
 	edgeDetected = getEdges(rawGreyData);
 
-	productionStep = Math.max(productionStep, 1);
-	if (processStepSlider.value <= 1)
+	productionStep = Math.max(productionStep, 2);
+	if (processStepSlider.value <= 2)
 		showOutput(edgeDetected);
 	else
 		produceImageThresholds();
@@ -292,9 +431,33 @@ produceImageThresholds = function()
 	// threshold
 	thresholded = thresholdFloats(edgeDetected, thresholdSlider.value);
 
-	productionStep = Math.max(productionStep, 2);
-	if (processStepSlider.value <= 2)
+	productionStep = Math.max(productionStep, 3);
+	if (processStepSlider.value <= 3)
 		showOutput(thresholded);
+	else
+		produceImageDilate();
+}
+
+produceImageDilate = function()
+{
+	// dilated
+	dilated = dilateKernel.convoluteMax(thresholded, { earlyOutFn: accum => accum >= 1});
+
+	productionStep = Math.max(productionStep, 4);
+	if (processStepSlider.value <= 4)
+		showOutput(dilated);
+	else
+		produceImageErode();
+}
+
+produceImageErode = function()
+{
+	// eroded
+	eroded = erodeKernel.convoluteMin(dilated, {});
+
+	productionStep = Math.max(productionStep, 5);
+	if (processStepSlider.value <= 5)
+		showOutput(eroded);
 	else
 		produceImageSdf();
 }
@@ -302,10 +465,10 @@ produceImageThresholds = function()
 produceImageSdf = function()
 {
 	// compute the distance field for the thresholded image
-	sdf = floatToHackyFastSDF(thresholded, sdfFalloffSlider.value);
+	sdf = floatToHackyFastSDF(eroded, sdfRadiusSlider.value);
 
-	productionStep = Math.max(productionStep, 3);
-	if (processStepSlider.value <= 3)
+	productionStep = Math.max(productionStep, 6);
+	if (processStepSlider.value <= 6)
 		showOutput(sdf);
 	else
 		produceImageLetters();
@@ -459,12 +622,13 @@ greyFloatToRGBA = function(data)
 }
 
 /// Converts a float array to a signed distance field array
-floatToHackyFastSDF = function(imageData, falloff)
+floatToHackyFastSDF = function(imageData, radius)
 {
 	if (!(imageData instanceof LiteImageData))
 	{
 		throw "'imageData' is not a LiteImageData";
 	}
+	var falloff = 1 / radius;
 	var width = imageData.width;
 	var height = imageData.height;
 	var out = new Float32Array(imageData.data);
@@ -548,32 +712,39 @@ overlayLetter = function(t)
 	var inverseMatchWt = global.env.inverseMatchWt;*/
 
 	var originI = t.x * letterWidth + t.y * letterHeight * mask.width;
+	var maxJitter = parseInt(allowedJitterSlider.value);
 
 	for (var char = 32; char < 127; ++char)
 	{
-		var rating = 0;
-		var inverseRating = 0;
-		var charData = letterData[char];
-		for (var x = 0; x < letterWidth; ++x)
-		for (var y = 0; y < letterHeight; ++y)
+		for (var jx = -maxJitter; jx <= maxJitter; jx++)
+		for (var jy = -maxJitter; jy <= maxJitter; jy++)
 		{
-			var letterValue = charData.pixels[x + y * letterWidth];
-			var maskValue = mask.data[x + y * mask.width + originI];
+			var jitteredOriginI = originI + jx + jy * mask.width;
 
-			// bonus for convolution match
-			rating += letterValue * maskValue;
-			
-			// penalty for convolution match with inverse
-			inverseRating += letterValue * (1.0 - maskValue);
-		}
+			var rating = 0;
+			var inverseRating = 0;
+			var charData = letterData[char];
+			for (var x = 0; x < letterWidth; ++x)
+			for (var y = 0; y < letterHeight; ++y)
+			{
+				var letterValue = charData.pixels[x + y * letterWidth];
+				var maskValue = mask.data[x + y * mask.width + jitteredOriginI];
 
-		// sum, apply character weight
-		rating = (rating - inverseMatchWt * inverseRating) * charData.weight;
+				// bonus for convolution match
+				rating += letterValue * maskValue;
+				
+				// penalty for convolution match with inverse
+				inverseRating += letterValue * (1.0 - maskValue);
+			}
 
-		if (rating > bestRating)
-		{
-			bestRating = rating;
-			bestChar = char;
+			// sum, apply character weight
+			rating = (rating - inverseMatchWt * inverseRating) * charData.weight;
+
+			if (rating > bestRating)
+			{
+				bestRating = rating;
+				bestChar = char;
+			}
 		}
 	}
 
