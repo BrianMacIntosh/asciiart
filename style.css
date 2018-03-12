@@ -50,6 +50,11 @@ body
 	top: 10px;
 }
 
+#advancedOptions
+{
+	border: 1px solid black;
+}
+
 #canvasDiv
 {
 	padding: 0 0 0 0;

@@ -143,6 +143,7 @@ scratchCanvas = null;
 scratchCtx = null;
 outputCanvas = null;
 outputCtx = null;
+
 thresholdSlider = null;
 dilateSlider = null;
 erodeSlider = null;
@@ -150,6 +151,7 @@ sdfRadiusSlider = null;
 inverseMatchSlider = null;
 allowedJitterSlider = null;
 processStepSlider = null;
+propertySliders = [];
 
 outputTilesX = 0; // horizontal tiles in the output
 outputTilesY = 0; // vertical tiles in the output
@@ -167,6 +169,26 @@ finalImage = null; // final image with matched letters (Float32Array)
 dilateKernel = null;
 erodeKernel = null;
 
+setUpPropertySlider = function(sliderId, valueId, changeCallback)
+{
+	var slider = document.getElementById(sliderId);
+	var value = document.getElementById(valueId);
+	slider.addEventListener("change", changeCallback);
+	slider.addEventListener("change", function(e) { value.innerHTML = slider.value; });
+	value.innerHTML = slider.value;
+	propertySliders.push({slider: slider, value: value});
+	return slider;
+}
+
+updateAllPropertyValues = function()
+{
+	for (var i = 0; i < propertySliders.length; i++)
+	{
+		propertySliders[i].value.innerHTML = propertySliders[i].slider.value;
+	}
+	produceImage();
+}
+
 onDomLoaded = function()
 {
 	scratchCanvas = document.createElement("canvas");
@@ -175,26 +197,13 @@ onDomLoaded = function()
 	outputCanvas = document.getElementById("outputCanvas");
 	outputCtx = outputCanvas.getContext('2d');
 
-	thresholdSlider = document.getElementById("thresholdSlider");
-	thresholdSlider.addEventListener("change", onThresholdChanged);
-
-	dilateSlider = document.getElementById("dilateSlider");
-	dilateSlider.addEventListener("change", onDilateChanged);
-
-	erodeSlider = document.getElementById("erodeSlider");
-	erodeSlider.addEventListener("change", onErodeChanged);
-
-	sdfRadiusSlider = document.getElementById("sdfRadiusSlider");
-	sdfRadiusSlider.addEventListener("change", onSdfRadiusChanged);
-
-	inverseMatchSlider = document.getElementById("inverseMatchSlider");
-	inverseMatchSlider.addEventListener("change", onInverseMatchWeightChanged);
-
-	allowedJitterSlider = document.getElementById("allowedJitterSlider");
-	allowedJitterSlider.addEventListener("change", onAllowedJitterChanged);
-
-	processStepSlider = document.getElementById("processStepSlider");
-	processStepSlider.addEventListener("change", onProcessStepChanged);
+	thresholdSlider = setUpPropertySlider("thresholdSlider", "thresholdValue", onThresholdChanged);
+	dilateSlider = setUpPropertySlider("dilateSlider", "dilateValue", onDilateChanged);
+	erodeSlider = setUpPropertySlider("erodeSlider", "erodeValue", onErodeChanged);
+	sdfRadiusSlider = setUpPropertySlider("sdfRadiusSlider", "sdfRadiusValue", onSdfRadiusChanged);
+	inverseMatchSlider = setUpPropertySlider("inverseMatchSlider", "inverseMatchValue", onInverseMatchWeightChanged);
+	allowedJitterSlider = setUpPropertySlider("allowedJitterSlider", "allowedJitterValue", onAllowedJitterChanged);
+	processStepSlider = setUpPropertySlider("processStepSlider", "processStepValue", onProcessStepChanged);
 
 	loadLetters();
 	createDilateKernel();
@@ -357,6 +366,7 @@ onURLInput = function()
 	loadedImage.onload = function() {
 		produceImage();
 	};
+	loadedImage.crossOrigin = "";
 	loadedImage.src = urlElement.value;
 }
 
@@ -365,7 +375,6 @@ produceImage = function()
 	productionStep = -1;
 
 	console.log("Image loaded.");
-	console.log(loadedImage);
 
 	var sourceX = loadedImage.width;
 	var sourceY = loadedImage.height;
@@ -395,6 +404,8 @@ produceImage = function()
 
 produceRawImage = function()
 {
+	if (!rawImageData) return;
+
 	productionStep = Math.max(productionStep, 0);
 	if (processStepSlider.value <= 0)
 		showOutput(rawImageData);

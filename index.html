@@ -21,7 +21,47 @@
 <meta name="description" content="">
 
 <script src="script/ascii.js" type="text/javascript"></script>
-<script src="script/parallel.js" type="text/javascript"></script>
+<!--script src="script/parallel.js" type="text/javascript"></script-->
+
+<script type="text/javascript">
+toggleAdvancedClicked = function(e)
+{
+	var advancedOptions = document.getElementById("advancedOptions");
+	var toggleAdvancedSign = document.getElementById("toggleAdvancedSign");
+	if (advancedOptions.style.display == "none")
+	{
+		advancedOptions.style.display = "block";
+		toggleAdvancedSign.innerHTML = "-";
+	}
+	else
+	{
+		advancedOptions.style.display = "none";
+		toggleAdvancedSign.innerHTML = "+";
+	}
+}
+setGraphicPreset = function(e)
+{
+	processStepSlider.value = processStepSlider.max;
+	thresholdSlider.value = "0.08";
+	dilateSlider.value = "0";
+	erodeSlider.value = "0";
+	sdfRadiusSlider.value = "8";
+	inverseMatchSlider.value = "11";
+	allowedJitterSlider.value = "1";
+	updateAllPropertyValues();
+}
+setPhotoPreset = function(e)
+{
+	processStepSlider.value = processStepSlider.max;
+	thresholdSlider.value = "0.1";
+	dilateSlider.value = "1";
+	erodeSlider.value = "1";
+	sdfRadiusSlider.value = "5";
+	inverseMatchSlider.value = "11";
+	allowedJitterSlider.value = "1";
+	updateAllPropertyValues();
+}
+</script>
 
 <!--<script type="text/javascript">
 	(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
@@ -43,15 +83,47 @@
 <hr>
 <p align="center">URL: <input type="text" id="urlreader"/> <input type="button" id="urlbutton" value="Load" onclick="onURLInput()"/></p>
 <hr>
+<p><b>Select a preset: </b><a href="javascript:void(0)" onclick="setGraphicPreset()">Graphic</a> - <a href="javascript:void(0)" onclick="setPhotoPreset()">Photo</a></p>
+<p><span id="toggleAdvancedSign">+</span> <a href="javascript:void(0)" onclick="toggleAdvancedClicked()">Advanced</a></p>
+<div id="advancedOptions" style="display: none">
 <table>
-<tr><td>Process Step:</td><td><input type="range" id="processStepSlider" value="0" min="0" max="7" step="1"/></td></tr>
-<tr><td>Edge Threshold:</td><td><input type="range" id="thresholdSlider" value="0.08" min="0" max="1" step="0.02"/></td></tr>
-<tr><td>Dilate:</td><td><input type="range" id="dilateSlider" value="2" min="0" max="8" step="1"/></td></tr>
-<tr><td>Erode:</td><td><input type="range" id="erodeSlider" value="2" min="0" max="8" step="1"/></td></tr>
-<tr><td>SDF Radius:</td><td><input type="range" id="sdfRadiusSlider" value="3" min="0" max="8" step="1"/></td></tr>
-<tr><td>Inverse Match Weight:</td><td><input type="range" id="inverseMatchSlider" value="11" min="0" max="15" step="0.25"/></td></tr>
-<tr><td>Max Letter Jitter:</td><td><input type="range" id="allowedJitterSlider" value="1" min="0" max="3" step="1"/></td></tr>
+<tr>
+	<td>Stage:</td>
+	<td id="processStepValue"></td>
+	<td><input type="range" id="processStepSlider" value="0" min="0" max="7" step="1"/></td>
+</tr>
+<tr>
+	<td>Edge Threshold:</td>
+	<td id="thresholdValue"></td>
+	<td><input type="range" id="thresholdSlider" value="0.08" min="0" max="0.5" step="0.02"/></td>
+</tr>
+<tr>
+	<td>Dilate:</td>
+	<td id="dilateValue"></td>
+	<td><input type="range" id="dilateSlider" value="0" min="0" max="8" step="1"/></td>
+</tr>
+<tr>
+	<td>Erode:</td>
+	<td id="erodeValue"></td>
+	<td><input type="range" id="erodeSlider" value="0" min="0" max="8" step="1"/></td>
+</tr>
+<tr>
+	<td>SDF Radius:</td>
+	<td id="sdfRadiusValue"></td>
+	<td><input type="range" id="sdfRadiusSlider" value="3" min="0" max="8" step="1"/></td>
+</tr>
+<tr>
+	<td>Inverse Match Weight:</td>
+	<td id="inverseMatchValue"></td>
+	<td><input type="range" id="inverseMatchSlider" value="11" min="0" max="15" step="0.25"/></td>
+</tr>
+<tr>
+	<td>Max Letter Jitter:</td>
+	<td id="allowedJitterValue"></td>
+	<td><input type="range" id="allowedJitterSlider" value="1" min="0" max="3" step="1"/></td>
+</tr>
 </table>
+</div>
 <hr>
 <div id="outputParent">
 <p align="center"><canvas id="outputCanvas"></canvas></p>
