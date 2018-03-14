@@ -53,11 +53,11 @@ setGraphicPreset = function(e)
 setPhotoPreset = function(e)
 {
 	processStepSlider.value = processStepSlider.max;
-	thresholdSlider.value = "0.1";
+	thresholdSlider.value = "0.06";
 	dilateSlider.value = "1";
 	erodeSlider.value = "1";
 	sdfRadiusSlider.value = "5";
-	inverseMatchSlider.value = "11";
+	inverseMatchSlider.value = "9";
 	allowedJitterSlider.value = "1";
 	updateAllPropertyValues();
 }
@@ -83,14 +83,15 @@ setPhotoPreset = function(e)
 <hr>
 <p align="center">URL: <input type="text" id="urlreader"/> <input type="button" id="urlbutton" value="Load" onclick="onURLInput()"/></p>
 <hr>
-<p><b>Select a preset: </b><a href="javascript:void(0)" onclick="setGraphicPreset()">Graphic</a> - <a href="javascript:void(0)" onclick="setPhotoPreset()">Photo</a></p>
+<p><b>Select a preset: </b><a href="javascript:void(0)" onclick="setGraphicPreset()">Graphic (Hard Edges)</a> - <a href="javascript:void(0)" onclick="setPhotoPreset()">Photo</a></p>
+<p>Output Height: <input type="number" id="outputHeightSlider" value="32" min="8" max="60"/></p>
 <p><span id="toggleAdvancedSign">+</span> <a href="javascript:void(0)" onclick="toggleAdvancedClicked()">Advanced</a></p>
 <div id="advancedOptions" style="display: none">
 <table>
 <tr>
-	<td>Stage:</td>
+	<td>Debug Stage:</td>
 	<td id="processStepValue"></td>
-	<td><input type="range" id="processStepSlider" value="0" min="0" max="7" step="1"/></td>
+	<td><input type="range" id="processStepSlider" value="7" min="0" max="7" step="1"/></td>
 </tr>
 <tr>
 	<td>Edge Threshold:</td>
@@ -98,24 +99,24 @@ setPhotoPreset = function(e)
 	<td><input type="range" id="thresholdSlider" value="0.08" min="0" max="0.5" step="0.02"/></td>
 </tr>
 <tr>
-	<td>Dilate:</td>
+	<td>Dilate Radius:</td>
 	<td id="dilateValue"></td>
 	<td><input type="range" id="dilateSlider" value="0" min="0" max="8" step="1"/></td>
 </tr>
 <tr>
-	<td>Erode:</td>
+	<td>Erode Radius:</td>
 	<td id="erodeValue"></td>
 	<td><input type="range" id="erodeSlider" value="0" min="0" max="8" step="1"/></td>
 </tr>
 <tr>
-	<td>SDF Radius:</td>
+	<td>Blur Radius:</td>
 	<td id="sdfRadiusValue"></td>
-	<td><input type="range" id="sdfRadiusSlider" value="3" min="0" max="8" step="1"/></td>
+	<td><input type="range" id="sdfRadiusSlider" value="4" min="0" max="8" step="1"/></td>
 </tr>
 <tr>
 	<td>Inverse Match Weight:</td>
 	<td id="inverseMatchValue"></td>
-	<td><input type="range" id="inverseMatchSlider" value="11" min="0" max="15" step="0.25"/></td>
+	<td><input type="range" id="inverseMatchSlider" value="11" min="0" max="15" step="0.5"/></td>
 </tr>
 <tr>
 	<td>Max Letter Jitter:</td>

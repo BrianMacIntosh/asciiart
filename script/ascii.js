@@ -122,18 +122,28 @@ letterData['\\'.charCodeAt(0)].weight = 2.0;
 letterData['/'.charCodeAt(0)].weight = 2.0;
 letterData['_'.charCodeAt(0)].weight = 2.0;
 letterData['-'.charCodeAt(0)].weight = 2.0;
-letterData['<'.charCodeAt(0)].weight = 1.5;
-letterData['>'.charCodeAt(0)].weight = 1.5;
+letterData['<'.charCodeAt(0)].weight = 1.3;
+letterData['>'.charCodeAt(0)].weight = 1.3;
 letterData['|'.charCodeAt(0)].weight = 1.8;
-letterData['('.charCodeAt(0)].weight = 1.5;
-letterData[')'.charCodeAt(0)].weight = 1.5;
-letterData['f'.charCodeAt(0)].weight = 0.8;
-letterData['a'.charCodeAt(0)].weight = 0.8;
-letterData['r'.charCodeAt(0)].weight = 0.8;
-letterData['t'.charCodeAt(0)].weight = 0.8;
-letterData['j'.charCodeAt(0)].weight = 0.8;
-letterData['['.charCodeAt(0)].weight = 0.9;
-letterData[']'.charCodeAt(0)].weight = 0.9;
+letterData['('.charCodeAt(0)].weight = 1.4;
+letterData[')'.charCodeAt(0)].weight = 1.4;
+letterData[','.charCodeAt(0)].weight = 0.7;
+letterData[';'.charCodeAt(0)].weight = 0.7;
+letterData['['.charCodeAt(0)].weight = 0.6;
+letterData[']'.charCodeAt(0)].weight = 0.6;
+letterData['~'.charCodeAt(0)].weight = 0.6;
+letterData['{'.charCodeAt(0)].weight = 0;
+letterData['}'.charCodeAt(0)].weight = 0;
+letterData['&'.charCodeAt(0)].weight = 0;
+letterData['$'.charCodeAt(0)].weight = 0;
+letterData['@'.charCodeAt(0)].weight = 0;
+letterData['!'.charCodeAt(0)].weight = 0.2;
+for (var c = 'a'.charCodeAt(0); c <= 'z'.charCodeAt(0); c++)
+	letterData[c].weight = 0;
+for (var c = '0'.charCodeAt(0); c <= '9'.charCodeAt(0); c++)
+	letterData[c].weight = 0;
+for (var c = 'A'.charCodeAt(0); c <= 'Z'.charCodeAt(0); c++)
+	letterData[c].weight = 0.6;
 
 letterWidth = 0.0;
 letterHeight = 0.0;
@@ -144,6 +154,7 @@ scratchCtx = null;
 outputCanvas = null;
 outputCtx = null;
 
+outputHeightSlider = null;
 thresholdSlider = null;
 dilateSlider = null;
 erodeSlider = null;
@@ -152,6 +163,14 @@ inverseMatchSlider = null;
 allowedJitterSlider = null;
 processStepSlider = null;
 propertySliders = [];
+
+jitterOffsets = [
+	{ x: 0, y: 0 },
+	{ x: 0, y: -2 },
+	{ x: -2, y: 0 },
+	{ x: 2, y: 0 },
+	{ x: 0, y: 2 },
+];
 
 outputTilesX = 0; // horizontal tiles in the output
 outputTilesY = 0; // vertical tiles in the output
@@ -174,8 +193,11 @@ setUpPropertySlider = function(sliderId, valueId, changeCallback)
 	var slider = document.getElementById(sliderId);
 	var value = document.getElementById(valueId);
 	slider.addEventListener("change", changeCallback);
-	slider.addEventListener("change", function(e) { value.innerHTML = slider.value; });
-	value.innerHTML = slider.value;
+	if (value)
+	{
+		slider.addEventListener("change", function(e) { value.innerHTML = slider.value; });
+		value.innerHTML = slider.value;
+	}
 	propertySliders.push({slider: slider, value: value});
 	return slider;
 }
@@ -184,7 +206,10 @@ updateAllPropertyValues = function()
 {
 	for (var i = 0; i < propertySliders.length; i++)
 	{
-		propertySliders[i].value.innerHTML = propertySliders[i].slider.value;
+		if (propertySliders[i].value)
+		{
+			propertySliders[i].value.innerHTML = propertySliders[i].slider.value;
+		}
 	}
 	produceImage();
 }
@@ -197,6 +222,7 @@ onDomLoaded = function()
 	outputCanvas = document.getElementById("outputCanvas");
 	outputCtx = outputCanvas.getContext('2d');
 
+	outputHeightSlider = setUpPropertySlider("outputHeightSlider", "", onOutputHeightChanged);
 	thresholdSlider = setUpPropertySlider("thresholdSlider", "thresholdValue", onThresholdChanged);
 	dilateSlider = setUpPropertySlider("dilateSlider", "dilateValue", onDilateChanged);
 	erodeSlider = setUpPropertySlider("erodeSlider", "erodeValue", onErodeChanged);
@@ -208,6 +234,12 @@ onDomLoaded = function()
 	loadLetters();
 	createDilateKernel();
 	createErodeKernel();
+	setGraphicPreset();
+}
+
+onOutputHeightChanged = function(e)
+{
+	produceImageData();
 }
 
 onThresholdChanged = function(e)
@@ -376,11 +408,16 @@ produceImage = function()
 
 	console.log("Image loaded.");
 
+	produceImageData();
+}
+
+produceImageData = function()
+{
 	var sourceX = loadedImage.width;
 	var sourceY = loadedImage.height;
 
 	var aspectRatio = sourceX / sourceY;
-	outputTilesY = 40;
+	outputTilesY = parseInt(outputHeightSlider.value);
 	var outputTilesXFloat = outputTilesY * aspectRatio / letterAspect;
 	outputTilesX = Math.ceil(outputTilesXFloat);
 	var outputX = outputTilesX * letterWidth;
@@ -723,18 +760,22 @@ overlayLetter = function(t)
 	var inverseMatchWt = global.env.inverseMatchWt;*/
 
 	var originI = t.x * letterWidth + t.y * letterHeight * mask.width;
-	var maxJitter = parseInt(allowedJitterSlider.value);
+	//var maxJitter = parseInt(allowedJitterSlider.value);
 
 	for (var char = 32; char < 127; ++char)
 	{
-		for (var jx = -maxJitter; jx <= maxJitter; jx++)
-		for (var jy = -maxJitter; jy <= maxJitter; jy++)
+		var charData = letterData[char];
+		if (charData.weight <= 0) continue;
+
+		for (var i in jitterOffsets)
 		{
+			var jo = jitterOffsets[i];
+			var jx = jo.x;
+			var jy = jo.y;
 			var jitteredOriginI = originI + jx + jy * mask.width;
 
 			var rating = 0;
 			var inverseRating = 0;
-			var charData = letterData[char];
 			for (var x = 0; x < letterWidth; ++x)
 			for (var y = 0; y < letterHeight; ++y)
 			{
