@@ -236,7 +236,7 @@ updateAllPropertyValues = function()
 		}
 	}
 	updateProcessStepPropertyValue();
-	produceGreyscale();
+	produceRawImage();
 }
 
 updateProcessStepPropertyValue = function()
