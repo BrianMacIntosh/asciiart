@@ -17,10 +17,18 @@ body
 	padding: 0 0 0 0;
 }
 
-.center
+textarea
 {
-	text-align: center;
+	white-space: pre;
+	overflow-wrap: normal;
+	overflow: hidden;
 }
+
+.helpTip{font-size: small;}
+.advancedName{font-weight:bold;}
+.center{text-align: center;}
+
+#legal{font-size:10px;}
 
 #title
 {
@@ -37,8 +45,8 @@ body
 {
 	background-color:silver;
 	color:black;
-	width:700px;
-	margin:auto;
+	margin-left:15%;
+	margin-right:15%;
 	border:1px solid black;
 	padding: 10px 10px 10px 10px;
 }

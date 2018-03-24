@@ -151,6 +151,8 @@ letterAspect = 1.0;
 
 scratchCanvas = null;
 scratchCtx = null;
+rawCanvas = null;
+rawCtx = null;
 outputCanvas = null;
 outputCtx = null;
 
@@ -166,10 +168,14 @@ propertySliders = [];
 
 jitterOffsets = [
 	{ x: 0, y: 0 },
+	{ x: 2, y: -2 },
 	{ x: 0, y: -2 },
+	{ x: -2, y: -2 },
 	{ x: -2, y: 0 },
-	{ x: 2, y: 0 },
+	{ x: -2, y: 2 },
 	{ x: 0, y: 2 },
+	{ x: 2, y: 2 },
+	{ x: 2, y: 0 },
 ];
 
 outputTilesX = 0; // horizontal tiles in the output
@@ -211,14 +217,22 @@ updateAllPropertyValues = function()
 			propertySliders[i].value.innerHTML = propertySliders[i].slider.value;
 		}
 	}
-	produceImage();
+	updateProcessStepPropertyValue();
+	produceGreyscale();
+}
+
+updateProcessStepPropertyValue = function()
+{
+	var processStepValue = document.getElementById("processStepValue");
+	processStepValue.innerHTML = processStepNames[processStepSlider.value];
 }
 
 onDomLoaded = function()
 {
 	scratchCanvas = document.createElement("canvas");
 	scratchCtx = scratchCanvas.getContext("2d");
-
+	rawCanvas = document.getElementById("rawCanvas");
+	rawCtx = rawCanvas.getContext('2d');
 	outputCanvas = document.getElementById("outputCanvas");
 	outputCtx = outputCanvas.getContext('2d');
 
@@ -228,12 +242,10 @@ onDomLoaded = function()
 	erodeSlider = setUpPropertySlider("erodeSlider", "erodeValue", onErodeChanged);
 	sdfRadiusSlider = setUpPropertySlider("sdfRadiusSlider", "sdfRadiusValue", onSdfRadiusChanged);
 	inverseMatchSlider = setUpPropertySlider("inverseMatchSlider", "inverseMatchValue", onInverseMatchWeightChanged);
-	allowedJitterSlider = setUpPropertySlider("allowedJitterSlider", "allowedJitterValue", onAllowedJitterChanged);
-	processStepSlider = setUpPropertySlider("processStepSlider", "processStepValue", onProcessStepChanged);
+	//allowedJitterSlider = setUpPropertySlider("allowedJitterSlider", "allowedJitterValue", onAllowedJitterChanged);
+	processStepSlider = setUpPropertySlider("processStepSlider", "", onProcessStepChanged);
 
 	loadLetters();
-	createDilateKernel();
-	createErodeKernel();
 	setGraphicPreset();
 }
 
@@ -249,13 +261,11 @@ onThresholdChanged = function(e)
 
 onDilateChanged = function(e)
 {
-	createDilateKernel();
 	produceImageDilate();
 }
 
 onErodeChanged = function(e)
 {
-	createErodeKernel();
 	produceImageErode();
 }
 
@@ -274,13 +284,26 @@ onAllowedJitterChanged = function(e)
 	produceImageLetters();
 }
 
+processStepNames = [
+	"Raw Image",
+	"Greyscale",
+	"Edges",
+	"Threshold",
+	"Dilate",
+	"Erode",
+	"Blur",
+	"Final"
+];
+
 onProcessStepChanged = function()
 {
+	updateProcessStepPropertyValue();
+
 	var startFromStep = parseInt(processStepSlider.value);
 	startFromStep = Math.min(productionStep + 1, startFromStep);
 	switch (startFromStep)
 	{
-		case 0: produceRawImage(); break;
+		case 0:
 		case 1: produceGreyscale(); break;
 		case 2: produceImageEdges(); break;
 		case 3: produceImageThresholds(); break;
@@ -304,13 +327,21 @@ loadLetters = function()
 createDilateKernel = function()
 {
 	var kernelSize = parseInt(dilateSlider.value);
-	dilateKernel = createCircleKernel(kernelSize);
+	if (!dilateKernel || kernelSize != dilateKernel.radius)
+	{
+		dilateKernel = createCircleKernel(kernelSize);
+		dilateKernel.radius = kernelSize;
+	}
 }
 
 createErodeKernel = function()
 {
 	var kernelSize = parseInt(erodeSlider.value);
-	erodeKernel = createCircleKernel(kernelSize);
+	if (!erodeKernel || kernelSize != erodeKernel.radius)
+	{
+		erodeKernel = createCircleKernel(kernelSize);
+		erodeKernel.radius = kernelSize;
+	}
 }
 
 createCircleKernel = function(radius)
@@ -328,7 +359,7 @@ createCircleKernel = function(radius)
 		var di = x + y * kernelSize;
 		data[di] = dSq <= radiusSq ? 1 : 0;
 	}
-	return new Kernel(data, kernelSize, kernelSize, radius + 1, radius + 1);
+	return new Kernel(data, kernelSize, kernelSize, radius, radius);
 }
 
 // splits and prepares the letter template image
@@ -381,6 +412,7 @@ onFileInput = function()
 
 	loadedImage = new Image;
 	loadedImage.onload = function() {
+		console.log("Image loaded.");
 		produceImage();
 		URL.revokeObjectURL(loadedImage.src);
 	};
@@ -396,6 +428,7 @@ onURLInput = function()
 
 	loadedImage = new Image;
 	loadedImage.onload = function() {
+		console.log("Image loaded.");
 		produceImage();
 	};
 	loadedImage.crossOrigin = "";
@@ -406,13 +439,13 @@ produceImage = function()
 {
 	productionStep = -1;
 
-	console.log("Image loaded.");
-
 	produceImageData();
 }
 
 produceImageData = function()
 {
+	if (!loadedImage) return;
+
 	var sourceX = loadedImage.width;
 	var sourceY = loadedImage.height;
 
@@ -428,12 +461,12 @@ produceImageData = function()
 	var outputPixelCount = outputX * outputY;
 
 	// get image data
-	scratchCanvas.width = outputX;
-	scratchCanvas.height = outputY;
-	scratchCtx.drawImage(loadedImage,
+	rawCanvas.width = outputX;
+	rawCanvas.height = outputY;
+	rawCtx.drawImage(loadedImage,
 		0, 0, sourceX, sourceY,
 		0, 0, outputX, outputY);
-	var imageData = scratchCtx.getImageData(0, 0, outputX, outputY);
+	var imageData = rawCtx.getImageData(0, 0, outputX, outputY);
 	rawImageData = new LiteImageData(imageData.data, outputX, outputY)
 
 	produceRawImage();
@@ -443,11 +476,7 @@ produceRawImage = function()
 {
 	if (!rawImageData) return;
 
-	productionStep = Math.max(productionStep, 0);
-	if (processStepSlider.value <= 0)
-		showOutput(rawImageData);
-	else
-		produceGreyscale();
+	produceGreyscale();
 }
 
 produceGreyscale = function()
@@ -489,6 +518,7 @@ produceImageThresholds = function()
 produceImageDilate = function()
 {
 	// dilated
+	createDilateKernel();
 	dilated = dilateKernel.convoluteMax(thresholded, { earlyOutFn: accum => accum >= 1});
 
 	productionStep = Math.max(productionStep, 4);
@@ -501,6 +531,7 @@ produceImageDilate = function()
 produceImageErode = function()
 {
 	// eroded
+	createErodeKernel();
 	eroded = erodeKernel.convoluteMin(dilated, {});
 
 	productionStep = Math.max(productionStep, 5);
@@ -532,6 +563,13 @@ produceImageLetters = function()
 onOverlayLettersComplete = function(result)
 {
 	letterChars = result;
+
+	// produce text output
+	var outputText = document.getElementById("outputText");
+	outputText.innerHTML = lettersToString(letterChars);
+	outputText.style.height = outputText.style.width = "";
+	outputText.style.width = outputText.scrollWidth + "px";
+	outputText.style.height = outputText.scrollHeight + "px";
 
 	produceImageFinal();
 }
@@ -741,6 +779,21 @@ overlayLetters = function(imask, tilesX, tilesY,
 	inverseMatchWt = iinverseMatchWt;
 	
 	callback(input.map(overlayLetter));
+}
+
+/// converts a 2D character array to a string
+lettersToString = function(letterChars)
+{
+	var str = "";
+	for (var y = 0; y < outputTilesY; y++)
+	{
+		for (var x = 0; x < outputTilesX; x++)
+		{
+			str += String.fromCharCode(letterChars[x + y * outputTilesX]);
+		}
+		str += "\n";
+	}
+	return str;
 }
 
 //TEMP:

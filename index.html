@@ -47,7 +47,7 @@ setGraphicPreset = function(e)
 	erodeSlider.value = "0";
 	sdfRadiusSlider.value = "8";
 	inverseMatchSlider.value = "11";
-	allowedJitterSlider.value = "1";
+	//allowedJitterSlider.value = "1";
 	updateAllPropertyValues();
 }
 setPhotoPreset = function(e)
@@ -58,18 +58,23 @@ setPhotoPreset = function(e)
 	erodeSlider.value = "1";
 	sdfRadiusSlider.value = "5";
 	inverseMatchSlider.value = "9";
-	allowedJitterSlider.value = "1";
+	//allowedJitterSlider.value = "1";
 	updateAllPropertyValues();
 }
 </script>
 
+<!--script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<script>
+(adsbygoogle = window.adsbygoogle || []).push({google_ad_client: "ca-pub-4008116517063705", enable_page_level_ads: true});
+</script-->
+
 <!--<script type="text/javascript">
-	(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
-	(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
-	m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
-	})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
-	ga('create', 'UA-36013541-1', 'brianmacintosh.com');
-	ga('send', 'pageview');
+(function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
+(i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
+m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
+})(window,document,'script','//www.google-analytics.com/analytics.js','ga');
+ga('create', 'UA-36013541-1', 'brianmacintosh.com');
+ga('send', 'pageview');
 </script>-->
 </head>
 
@@ -79,55 +84,72 @@ setPhotoPreset = function(e)
 <div id="title">ASCII Image Generator</div>
 
 <div class="stepbox" id="step1">
+<table><tr>
+<td><img src="sample.png" alt="Sample image" height="140px"></td>
+<td></td>
+<td>This pages takes an image and attempts to create an ASCII-art derivative of it using an edge-detection algorithm. It works best for images with solid colors and hard edges.</td>
+</tr></table>
+<hr>
 <p align="center">File: <input type="file" id="filereader" onchange="onFileInput()"/></p>
-<hr>
-<p align="center">URL: <input type="text" id="urlreader"/> <input type="button" id="urlbutton" value="Load" onclick="onURLInput()"/></p>
-<hr>
+<!--p align="center">URL: <input type="text" id="urlreader"/> <input type="button" id="urlbutton" value="Load" onclick="onURLInput()"/></p-->
 <p><b>Select a preset: </b><a href="javascript:void(0)" onclick="setGraphicPreset()">Graphic (Hard Edges)</a> - <a href="javascript:void(0)" onclick="setPhotoPreset()">Photo</a></p>
 <p>Output Height: <input type="number" id="outputHeightSlider" value="32" min="8" max="60"/></p>
 <p><span id="toggleAdvancedSign">+</span> <a href="javascript:void(0)" onclick="toggleAdvancedClicked()">Advanced</a></p>
 <div id="advancedOptions" style="display: none">
 <table>
 <tr>
-	<td>Debug Stage:</td>
+	<td class="advancedName">Debug Stage:</td>
+	<td><input type="range" id="processStepSlider" value="7" min="1" max="7" step="1"/></td>
 	<td id="processStepValue"></td>
-	<td><input type="range" id="processStepSlider" value="7" min="0" max="7" step="1"/></td>
+	<td class="helpTip">Check the output of different stages of the algorithm.</td>
 </tr>
 <tr>
-	<td>Edge Threshold:</td>
-	<td id="thresholdValue"></td>
+	<td class="advancedName">Edge Threshold:</td>
 	<td><input type="range" id="thresholdSlider" value="0.08" min="0" max="0.5" step="0.02"/></td>
+	<td id="thresholdValue"></td>
+	<td class="helpTip">The most commonly-changed setting. Higher values will cause more characters in the output.</td>
 </tr>
 <tr>
-	<td>Dilate Radius:</td>
-	<td id="dilateValue"></td>
+	<td class="advancedName">Dilate Radius:</td>
 	<td><input type="range" id="dilateSlider" value="0" min="0" max="8" step="1"/></td>
+	<td id="dilateValue"></td>
+	<td class="helpTip">Thickens the detected edges.</td>
 </tr>
 <tr>
-	<td>Erode Radius:</td>
-	<td id="erodeValue"></td>
+	<td class="advancedName">Erode Radius:</td>
 	<td><input type="range" id="erodeSlider" value="0" min="0" max="8" step="1"/></td>
+	<td id="erodeValue"></td>
+	<td class="helpTip">Narrows the detected edges. When used with an equivalent Dilate, cleans up noise.</td>
 </tr>
 <tr>
-	<td>Blur Radius:</td>
-	<td id="sdfRadiusValue"></td>
+	<td class="advancedName">Blur Radius:</td>
 	<td><input type="range" id="sdfRadiusSlider" value="4" min="0" max="8" step="1"/></td>
+	<td id="sdfRadiusValue"></td>
+	<td class="helpTip">Higher values will cause more characters in the output.</td>
 </tr>
 <tr>
-	<td>Inverse Match Weight:</td>
-	<td id="inverseMatchValue"></td>
+	<td class="advancedName">Inverse Match Weight:</td>
 	<td><input type="range" id="inverseMatchSlider" value="11" min="0" max="15" step="0.5"/></td>
+	<td id="inverseMatchValue"></td>
+	<td class="helpTip">Penalty applied to characters that don't fit the detected shape as well. Higher values will cause less characters in the output.</td>
 </tr>
-<tr>
-	<td>Max Letter Jitter:</td>
-	<td id="allowedJitterValue"></td>
+<!--tr>
+	<td class="advancedName">Max Letter Jitter:</td>
 	<td><input type="range" id="allowedJitterSlider" value="1" min="0" max="3" step="1"/></td>
-</tr>
+	<td id="allowedJitterValue"></td>
+	<td class="helpTip">Higher values lead to better matches but dramatically increase processing time.</td>
+</tr-->
 </table>
 </div>
 <hr>
 <div id="outputParent">
-<p align="center"><canvas id="outputCanvas"></canvas></p>
+<p class="center"><canvas id="rawCanvas"></canvas> <canvas id="outputCanvas"></canvas></p>
+<p class="center"><textarea id="outputText" rows="0" cols="0" readonly></textarea></p>
+<p id="legal">
+Brian MacIntosh waives any copyright applied to derivative images produced by this software program. You may use images and textual output produced by this program for any purpose allowed under any copyright(s) of the input image.<br/>
+<br/>
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+</p>
 </div>
 
 </div>
