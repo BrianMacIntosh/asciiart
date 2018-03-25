@@ -46,6 +46,19 @@ var Kernel = function(data, width, height, centerX, centerY)
 
 Kernel.prototype = new LiteImageData();
 
+Kernel.prototype.normalize = function()
+{
+	var sum = 0;
+	for (var i = 0; i < this.data.length; i++)
+	{
+		sum += this.data[i];
+	}
+	for (var i = 0; i < this.data.length; i++)
+	{
+		this.data[i] /= sum;
+	}
+}
+
 Kernel.accumulateMax = function(accum, data, kernel)
 {
 	return Math.max(accum, data * kernel);
@@ -175,6 +188,7 @@ outputCanvas = null;
 outputCtx = null;
 
 outputHeightSlider = null;
+gaussianBlurSlider = null;
 thresholdSlider = null;
 dilateSlider = null;
 erodeSlider = null;
@@ -186,21 +200,27 @@ propertySliders = [];
 
 jitterOffsets = [
 	{ x: 0, y: 0 },
-	{ x: 2, y: -2 },
 	{ x: 0, y: -2 },
-	{ x: -2, y: -2 },
 	{ x: -2, y: 0 },
-	{ x: -2, y: 2 },
 	{ x: 0, y: 2 },
-	{ x: 2, y: 2 },
 	{ x: 2, y: 0 },
 ];
+
+greyscaleStepNum = 0;
+blurStepNum = 1;
+edgeDetectStepNum = 2;
+thresholdStepNum = 3;
+dilateStepNum = 4;
+erodeStepNum = 5;
+sdfStepNum = 6;
+finalStepNum = 7;
 
 outputTilesX = 0; // horizontal tiles in the output
 outputTilesY = 0; // vertical tiles in the output
 productionStep = -1; // the highest production step reached so far for this image
 rawImageData = null; // input image (Uint8ClampedArray RGBA)
 rawGreyData = null; // greyscale input data (Float32Array)
+gaussianBlurred = null; // blurred input data (Float32Array)
 edgeDetected = null; // edge-detected data (Float32Array)
 thresholded = null; // thresholded (Float32Array)
 dilated = null;
@@ -209,6 +229,7 @@ sdf = null; // sdf (Float32Array)
 letterChars = null; // Uint8Array of chars in the output grid
 finalImage = null; // final image with matched letters (Float32Array)
 
+blurKernel = null;
 dilateKernel = null;
 erodeKernel = null;
 
@@ -255,6 +276,7 @@ onDomLoaded = function()
 	outputCtx = outputCanvas.getContext('2d');
 
 	outputHeightSlider = setUpPropertySlider("outputHeightSlider", "", onOutputHeightChanged);
+	gaussianBlurSlider = setUpPropertySlider("gaussianBlurSlider", "gaussianBlurValue", onGaussianBlurChanged);
 	thresholdSlider = setUpPropertySlider("thresholdSlider", "thresholdValue", onThresholdChanged);
 	dilateSlider = setUpPropertySlider("dilateSlider", "dilateValue", onDilateChanged);
 	erodeSlider = setUpPropertySlider("erodeSlider", "erodeValue", onErodeChanged);
@@ -270,6 +292,11 @@ onDomLoaded = function()
 onOutputHeightChanged = function(e)
 {
 	produceImageData();
+}
+
+onGaussianBlurChanged = function(e)
+{
+	produceImageBlurred();
 }
 
 onThresholdChanged = function(e)
@@ -303,8 +330,8 @@ onAllowedJitterChanged = function(e)
 }
 
 processStepNames = [
-	"Raw Image",
 	"Greyscale",
+	"Blur",
 	"Edges",
 	"Threshold",
 	"Dilate",
@@ -321,14 +348,14 @@ onProcessStepChanged = function()
 	startFromStep = Math.min(productionStep + 1, startFromStep);
 	switch (startFromStep)
 	{
-		case 0:
-		case 1: produceGreyscale(); break;
-		case 2: produceImageEdges(); break;
-		case 3: produceImageThresholds(); break;
-		case 4: produceImageDilate(); break;
-		case 5: produceImageErode(); break;
-		case 6: produceImageSdf(); break;
-		case 7: produceImageLetters(); break;
+		case greyscaleStepNum: produceGreyscale(); break;
+		case blurStepNum: produceImageBlurred(); break;
+		case edgeDetectStepNum: produceImageEdges(); break;
+		case thresholdStepNum: produceImageThresholds(); break;
+		case dilateStepNum: produceImageDilate(); break;
+		case erodeStepNum: produceImageErode(); break;
+		case sdfStepNum: produceImageSdf(); break;
+		case finalStepNum: produceImageLetters(); break;
 	}
 }
 
@@ -340,6 +367,16 @@ loadLetters = function()
 		parseLetters(lettersImage);
 	}
 	lettersImage.src = "letters.png";
+}
+
+createBlurKernel = function()
+{
+	var kernelSize = parseInt(gaussianBlurSlider.value);
+	if (!blurKernel || kernelSize != blurKernel.radius)
+	{
+		blurKernel = createGaussianKernel(kernelSize);
+		blurKernel.radius = kernelSize;
+	}
 }
 
 createDilateKernel = function()
@@ -360,6 +397,36 @@ createErodeKernel = function()
 		erodeKernel = createCircleKernel(kernelSize);
 		erodeKernel.radius = kernelSize;
 	}
+}
+
+var E = 2.71828;
+var PI = 3.141592658;
+
+gauss2d = function(x, y, o)
+{
+	if (o == 0) return x == 0 && y == 0 ? 1 : 0;
+	var top = Math.pow(E, (y * y - x * x) / (2 * o * o));
+	var bot = 2 * PI * o * o;
+	return top / bot;
+}
+
+createGaussianKernel = function(radius)
+{
+	var kernelSize = radius * 2 + 1;
+	var center = radius;
+	var radiusSq = radius * radius;
+	var data = new Float32Array(kernelSize * kernelSize);
+	for (var x = 0; x < kernelSize; x++)
+	for (var y = 0; y < kernelSize; y++)
+	{
+		var dx = (center - x);
+		var dy = (center - y);
+		var di = x + y * kernelSize;
+		data[di] = gauss2d(dx, dy, radius);
+	}
+	var kernel = new Kernel(data, kernelSize, kernelSize, radius, radius);
+	kernel.normalize();
+	return kernel;
 }
 
 createCircleKernel = function(radius)
@@ -502,9 +569,22 @@ produceGreyscale = function()
 	// greyscale the data
 	rawGreyData = getGreyscale(rawImageData);
 
-	productionStep = Math.max(productionStep, 1);
-	if (processStepSlider.value <= 1)
+	productionStep = Math.max(productionStep, greyscaleStepNum);
+	if (processStepSlider.value <= greyscaleStepNum)
 		showOutput(rawGreyData);
+	else
+		produceImageBlurred();
+}
+
+produceImageBlurred = function()
+{
+	// gaussian blur
+	createBlurKernel();
+	gaussianBlurred = blurKernel.convolute(rawGreyData);
+
+	productionStep = Math.max(productionStep, blurStepNum);
+	if (processStepSlider.value <= blurStepNum)
+		showOutput(gaussianBlurred);
 	else
 		produceImageEdges();
 }
@@ -512,10 +592,10 @@ produceGreyscale = function()
 produceImageEdges = function()
 {
 	// edge detection
-	edgeDetected = getEdges(rawGreyData);
+	edgeDetected = getEdges(gaussianBlurred);
 
-	productionStep = Math.max(productionStep, 2);
-	if (processStepSlider.value <= 2)
+	productionStep = Math.max(productionStep, edgeDetectStepNum);
+	if (processStepSlider.value <= edgeDetectStepNum)
 		showOutput(edgeDetected);
 	else
 		produceImageThresholds();
@@ -526,8 +606,8 @@ produceImageThresholds = function()
 	// threshold
 	thresholded = thresholdFloats(edgeDetected, thresholdSlider.value);
 
-	productionStep = Math.max(productionStep, 3);
-	if (processStepSlider.value <= 3)
+	productionStep = Math.max(productionStep, thresholdStepNum);
+	if (processStepSlider.value <= thresholdStepNum)
 		showOutput(thresholded);
 	else
 		produceImageDilate();
@@ -539,8 +619,8 @@ produceImageDilate = function()
 	createDilateKernel();
 	dilated = dilateKernel.convoluteMax(thresholded, { earlyOutFn: accum => accum >= 1});
 
-	productionStep = Math.max(productionStep, 4);
-	if (processStepSlider.value <= 4)
+	productionStep = Math.max(productionStep, dilateStepNum);
+	if (processStepSlider.value <= dilateStepNum)
 		showOutput(dilated);
 	else
 		produceImageErode();
@@ -552,8 +632,8 @@ produceImageErode = function()
 	createErodeKernel();
 	eroded = erodeKernel.convoluteMin(dilated, {});
 
-	productionStep = Math.max(productionStep, 5);
-	if (processStepSlider.value <= 5)
+	productionStep = Math.max(productionStep, erodeStepNum);
+	if (processStepSlider.value <= erodeStepNum)
 		showOutput(eroded);
 	else
 		produceImageSdf();
@@ -564,8 +644,8 @@ produceImageSdf = function()
 	// compute the distance field for the thresholded image
 	sdf = floatToHackyFastSDF(eroded, sdfRadiusSlider.value);
 
-	productionStep = Math.max(productionStep, 6);
-	if (processStepSlider.value <= 6)
+	productionStep = Math.max(productionStep, sdfStepNum);
+	if (processStepSlider.value <= sdfStepNum)
 		showOutput(sdf);
 	else
 		produceImageLetters();
