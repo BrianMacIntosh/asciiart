@@ -85,22 +85,22 @@ setGraphicPreset = function(e)
 {
 	processStepSlider.value = processStepSlider.max;
 	gaussianBlurSlider.value = "0";
-	thresholdSlider.value = "0.08";
+	thresholdSlider.value = "0.55";
 	dilateSlider.value = "0";
 	erodeSlider.value = "0";
-	sdfRadiusSlider.value = "8";
-	inverseMatchSlider.value = "11";
+	sdfRadiusSlider.value = "0";
+	inverseMatchSlider.value = "6.5";
 	//allowedJitterSlider.value = "1";
 	updateAllPropertyValues();
 }
 setPhotoPreset = function(e)
 {
 	processStepSlider.value = processStepSlider.max;
-	gaussianBlurSlider.value = "2";
-	thresholdSlider.value = "0.02";
+	gaussianBlurSlider.value = "1";
+	thresholdSlider.value = "0.2";
 	dilateSlider.value = "0";
-	erodeSlider.value = "1";
-	sdfRadiusSlider.value = "0";
+	erodeSlider.value = "0";
+	sdfRadiusSlider.value = "2";
 	inverseMatchSlider.value = "6.5";
 	//allowedJitterSlider.value = "1";
 	updateAllPropertyValues();
@@ -175,7 +175,7 @@ ga('send', 'pageview');
 </tr>
 <tr>
 	<td class="advancedName">Edge Threshold:</td>
-	<td><input type="range" id="thresholdSlider" value="0.08" min="0" max="0.2" step="0.01"/></td>
+	<td><input type="range" id="thresholdSlider" value="0.2" min="0" max="1" step="0.05"/></td>
 	<td id="thresholdValue"></td>
 	<td class="helpTip">The most commonly-changed setting. Higher values will cause more characters in the output.</td>
 </tr>
@@ -192,7 +192,7 @@ ga('send', 'pageview');
 	<td class="helpTip">Narrows the detected edges. When used with an equivalent Dilate, cleans up noise.</td>
 </tr>
 <tr>
-	<td class="advancedName">Blur Radius:</td>
+	<td class="advancedName">SDF Blur Radius:</td>
 	<td><input type="range" id="sdfRadiusSlider" value="4" min="0" max="8" step="1"/></td>
 	<td id="sdfRadiusValue"></td>
 	<td class="helpTip">Higher values will cause more characters in the output.</td>

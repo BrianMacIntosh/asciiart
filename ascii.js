@@ -230,6 +230,8 @@ letterChars = null; // Uint8Array of chars in the output grid
 finalImage = null; // final image with matched letters (Float32Array)
 
 blurKernel = null;
+sobelKernelX = new Kernel(new Float32Array([-1,0,1,-2,0,2,-1,0,1]), 3, 3, 1, 1);
+sobelKernelY = new Kernel(new Float32Array([-1,-2,-1,0,0,0,1,2,1]), 3, 3, 1, 1);;
 dilateKernel = null;
 erodeKernel = null;
 
@@ -725,32 +727,15 @@ getEdges = function(imageData)
 	{
 		throw "'imageData' is not a LiteImageData";
 	}
-	var data = imageData.data;
-	var width = imageData.width;
-	var height = imageData.height;
-	var edges = new Float32Array(data.length);
 	
-	// vertical pass
-	var ymax = height - 1;
-	for (var x = 0; x < width; ++x)
-	for (var y = 0; y < ymax; ++y)
-	{
-		var i = x + y * width;
-		var inext = x + (y + 1) * width;
-		edges[i] += Math.abs(data[i] - data[inext]);
-	}
+	var edges1 = sobelKernelX.convolute(imageData);
+	var edges2 = sobelKernelY.convolute(imageData);
 
-	// horizontal pass
-	var xmax = width - 1;
-	for (var x = 0; x < xmax; ++x)
-	for (var y = 0; y < height; ++y)
+	for (var i = 0; i < edges1.data.length; i++)
 	{
-		var i = x + y * width;
-		var inext = (x + 1) + y * width;
-		edges[i] += Math.abs(data[i] - data[inext]);
+		edges1.data[i] = Math.abs(edges1.data[i]) + Math.abs(edges2.data[i]);
 	}
-
-	return new LiteImageData(edges, imageData.width, imageData.height);
+	return edges1;
 }
 
 /// Dilates the specified float image data
