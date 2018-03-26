@@ -89,7 +89,7 @@ setGraphicPreset = function(e)
 	dilateSlider.value = "0";
 	erodeSlider.value = "0";
 	sdfRadiusSlider.value = "0";
-	inverseMatchSlider.value = "6.5";
+	inverseMatchSlider.value = "4";
 	//allowedJitterSlider.value = "1";
 	updateAllPropertyValues();
 }
@@ -108,7 +108,7 @@ setPhotoPreset = function(e)
 </script>
 
 <!-- Load Facebook SDK for JavaScript -->
-<!--div id="fb-root"></div>
+<div id="fb-root"></div>
 <script>(function(d, s, id){
 var js, fjs = d.getElementsByTagName(s)[0];
 if (d.getElementById(id)) return;
@@ -116,20 +116,20 @@ js = d.createElement(s); js.id = id;
 js.src = "//connect.facebook.net/en_US/all.js#xfbml=1";
 fjs.parentNode.insertBefore(js, fjs);
 }(document, 'script', 'facebook-jssdk'));
-</script-->
+</script>
 
 <!-- Load Google Analytics -->
-<!--script type="text/javascript">
+<script type="text/javascript">
 (function(i,s,o,g,r,a,m){i['GoogleAnalyticsObject']=r;i[r]=i[r]||function(){
 (i[r].q=i[r].q||[]).push(arguments)},i[r].l=1*new Date();a=s.createElement(o),
 m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
 })(window,document,'script','//www.google-analytics.com/analytics.js','ga');
 ga('create', 'UA-36013541-1', 'brianmacintosh.com');
 ga('send', 'pageview');
-</script-->
+</script>
 
 <!-- Load Twitter -->
-<!--script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script-->
+<script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
 </head>
 
 <body onload="onDomLoaded()">
@@ -142,7 +142,7 @@ ga('send', 'pageview');
 <table><tr>
 	<td><img src="sample.png" alt="Sample image" height="140px"></td>
 	<td></td>
-	<td>This pages takes an image and attempts to create an ASCII-art derivative of it using an edge-detection algorithm. It works best for images with solid colors and hard edges.
+	<td>This pages takes an image and creates an ASCII-art derivative of it using an edge-detection algorithm. It works best for well-defined images with solid colors and hard edges, but can work for photos as well.
 	<br/><br/>
 	<table><tr>
 		<td><a href="https://github.com/BrianMacIntosh/asciiart" target="_blank"><img src="/media/github.png" alt="Github"/></a></td>
@@ -224,12 +224,12 @@ THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLI
 
 </div>
 
-<!--div id="ad">
+<div id="ad">
 <script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
 <!-- ascii-art -->
 <ins class="adsbygoogle" style="display:inline-block;width:728px;height:90px" data-ad-client="ca-pub-4008116517063705" data-ad-slot="7568423829"></ins>
 <script>(adsbygoogle = window.adsbygoogle || []).push({});</script>
-</div-->
+</div>
 
 </body>
 </html>
