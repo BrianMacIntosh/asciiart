@@ -23,8 +23,8 @@ textarea{white-space:pre;overflow-wrap:normal;overflow:hidden;}
 .helpTip{font-size:small;}
 .advancedName{font-weight:bold;}
 .center{text-align:center;}
-#introImage{}
-#introText{}
+.twitterButton{display:inline;position:relative;top:3px;}
+#intro{text-align:center;}
 #fileInput{text-align:center;border:2px solid green;background-color:greenyellow;padding-top:1em;padding-bottom:1em;}
 #legal{font-size:10px;}
 #ad{display:block;text-align:center;margin-top:4em;margin-bottom:2em;}
@@ -138,14 +138,14 @@ ga('send', 'pageview');
 
 <div class="stepbox" id="step1">
 
-<div id="introImage"><img src="sample.png" alt="Sample image" height="140px"></div>
-<div id="introText">This pages takes an image and attempts to create an ASCII-art derivative of it using an edge-detection algorithm. It works best for images with solid colors and hard edges.
+<div id="intro">
+	<img src="sample.png" alt="Sample image" height="140px">
 	<br/><br/>
-	<table><tr>
-		<td><a href="https://github.com/BrianMacIntosh/asciiart" target="_blank"><img src="/media/github.png" alt="Github"/></a></td>
-		<td><div class="fb-like" data-href="http://www.brianmacintosh.com/asciiart/" data-layout="button_count" data-action="like" data-show-faces="true" data-share="true"></div></td>
-		<td><div style="margin-top:2px"><a href="https://twitter.com/share" class="twitter-share-button" data-text="This webpage converts images to ASCII art!" data-show-count="false">Tweet</a><script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script></div></td>
-	</tr></table>
+	This pages takes an image and attempts to create an ASCII-art derivative of it using an edge-detection algorithm. It works best for images with solid colors and hard edges.
+	<br/><br/>
+	<a href="https://github.com/BrianMacIntosh/asciiart" target="_blank"><img src="/media/github.png" alt="Github"/></a>
+	<div class="fb-like" data-href="http://www.brianmacintosh.com/asciiart/" data-layout="button_count" data-action="like" data-show-faces="true" data-share="true"></div>
+	<div class="twitterButton"><a href="https://twitter.com/share" class="twitter-share-button" data-text="This webpage converts images to ASCII art!" data-show-count="false">Tweet</a><script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script></div>
 </div>
 
 <hr>
