@@ -89,11 +89,16 @@ setGraphicPreset = function(e)
 {
 	processStepSlider.value = processStepSlider.max;
 	gaussianBlurSlider.value = "0";
-	thresholdSlider.value = "0.26";
+	//thresholdSlider.value = "0.26";
+	//dilateSlider.value = "0";
+	//erodeSlider.value = "0";
+	//sdfRadiusSlider.value = "3";
+	//inverseMatchSlider.value = "11";
+	thresholdSlider.value = "0.55";
 	dilateSlider.value = "0";
 	erodeSlider.value = "0";
-	sdfRadiusSlider.value = "3";
-	inverseMatchSlider.value = "11";
+	sdfRadiusSlider.value = "0";
+	inverseMatchSlider.value = "4";
 	//allowedJitterSlider.value = "1";
 	updateAllPropertyValues();
 }
@@ -102,10 +107,14 @@ setPhotoPreset = function(e)
 	processStepSlider.value = processStepSlider.max;
 	gaussianBlurSlider.value = "1";
 	thresholdSlider.value = "0.2";
-	dilateSlider.value = "1";
-	erodeSlider.value = "2";
-	sdfRadiusSlider.value = "4";
-	inverseMatchSlider.value = "9";
+	//dilateSlider.value = "1";
+	//erodeSlider.value = "2";
+	//sdfRadiusSlider.value = "4";
+	//inverseMatchSlider.value = "9";
+	dilateSlider.value = "0";
+	erodeSlider.value = "0";
+	sdfRadiusSlider.value = "2";
+	inverseMatchSlider.value = "6.5";
 	//allowedJitterSlider.value = "1";
 	updateAllPropertyValues();
 }
@@ -131,6 +140,9 @@ m=s.getElementsByTagName(o)[0];a.async=1;a.src=g;m.parentNode.insertBefore(a,m)
 ga('create', 'UA-36013541-1', 'brianmacintosh.com');
 ga('send', 'pageview');
 </script>
+
+<!-- Load Twitter -->
+<script async src="//platform.twitter.com/widgets.js" charset="utf-8"></script>
 </head>
 
 <body onload="onDomLoaded()">
@@ -143,7 +155,7 @@ ga('send', 'pageview');
 <div id="intro">
 	<img src="sample.png" alt="Sample image" height="140px">
 	<br/><br/>
-	This pages takes an image and attempts to create an ASCII-art derivative of it using an edge-detection algorithm. It works best for images with solid colors and hard edges.
+	This page takes an image and attempts to create an ASCII-art derivative of it using an edge-detection algorithm. It works best for images with solid colors and hard edges.
 	<br/><br/>
 	<a href="https://github.com/BrianMacIntosh/asciiart" target="_blank"><img src="/media/github.png" alt="Github"/></a>
 	<div class="fb-like" data-href="http://www.brianmacintosh.com/asciiart/" data-layout="button_count" data-action="like" data-show-faces="true" data-share="true"></div>
@@ -161,19 +173,19 @@ ga('send', 'pageview');
 <table>
 <tr>
 	<td class="advancedName">Debug Stage:</td>
-	<td><input type="range" id="processStepSlider" value="7" min="1" max="7" step="1"/></td>
+	<td><input type="range" id="processStepSlider" value="7" min="0" max="7" step="1"/></td>
 	<td id="processStepValue"></td>
 	<td class="helpTip">Check the output of different stages of the algorithm.</td>
 </tr>
 <tr>
 	<td class="advancedName">Blur Radius:</td>
-	<td><input type="range" id="gaussianBlurSlider" value="0" min="0" max="6" step="1"/></td>
+	<td><input type="range" id="gaussianBlurSlider" value="0" min="0" max="5" step="1"/></td>
 	<td id="gaussianBlurValue"></td>
-	<td class="helpTip">Increase this to eliminate noise in the input image.</td>
+	<td class="helpTip">The radius of the Gaussian blur to apply to the image. Reduces noise but can lose weak edges.</td>
 </tr>
 <tr>
 	<td class="advancedName">Edge Threshold:</td>
-	<td><input type="range" id="thresholdSlider" value="0.08" min="0" max="0.5" step="0.02"/></td>
+	<td><input type="range" id="thresholdSlider" value="0.2" min="0" max="1" step="0.05"/></td>
 	<td id="thresholdValue"></td>
 	<td class="helpTip">The most commonly-changed setting. Higher values will cause more characters in the output.</td>
 </tr>
@@ -190,7 +202,7 @@ ga('send', 'pageview');
 	<td class="helpTip">Narrows the detected edges. When used with an equivalent Dilate, cleans up noise.</td>
 </tr>
 <tr>
-	<td class="advancedName">Blur Radius:</td>
+	<td class="advancedName">SDF Blur Radius:</td>
 	<td><input type="range" id="sdfRadiusSlider" value="4" min="0" max="8" step="1"/></td>
 	<td id="sdfRadiusValue"></td>
 	<td class="helpTip">Higher values will cause more characters in the output.</td>
