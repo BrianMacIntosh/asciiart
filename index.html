@@ -88,10 +88,11 @@ toggleAdvancedClicked = function(e)
 setGraphicPreset = function(e)
 {
 	processStepSlider.value = processStepSlider.max;
-	thresholdSlider.value = "0.08";
+	gaussianBlurSlider.value = "0";
+	thresholdSlider.value = "0.26";
 	dilateSlider.value = "0";
 	erodeSlider.value = "0";
-	sdfRadiusSlider.value = "8";
+	sdfRadiusSlider.value = "3";
 	inverseMatchSlider.value = "11";
 	//allowedJitterSlider.value = "1";
 	updateAllPropertyValues();
@@ -99,10 +100,11 @@ setGraphicPreset = function(e)
 setPhotoPreset = function(e)
 {
 	processStepSlider.value = processStepSlider.max;
-	thresholdSlider.value = "0.06";
+	gaussianBlurSlider.value = "1";
+	thresholdSlider.value = "0.2";
 	dilateSlider.value = "1";
-	erodeSlider.value = "1";
-	sdfRadiusSlider.value = "5";
+	erodeSlider.value = "2";
+	sdfRadiusSlider.value = "4";
 	inverseMatchSlider.value = "9";
 	//allowedJitterSlider.value = "1";
 	updateAllPropertyValues();
@@ -152,7 +154,7 @@ ga('send', 'pageview');
 
 <div id="fileInput">File: <input type="file" id="filereader" onchange="onFileInput()"/></div>
 <!--p align="center">URL: <input type="text" id="urlreader"/> <input type="button" id="urlbutton" value="Load" onclick="onURLInput()"/></p-->
-<p><b>Select a preset: </b><a href="javascript:void(0)" onclick="setGraphicPreset()">Graphic (Hard Edges)</a> - <a href="javascript:void(0)" onclick="setPhotoPreset()">Photo</a></p>
+<p><b>Select a preset: </b><a href="javascript:void(0)" onclick="setGraphicPreset()">Graphic (Hard Edges)</a> - <a href="javascript:void(0)" onclick="setPhotoPreset()">Photo (Not Recommended)</a></p>
 <p>Output Height: <input type="number" id="outputHeightSlider" value="32" min="8" max="60"/></p>
 <p><span id="toggleAdvancedSign">+</span> <a href="javascript:void(0)" onclick="toggleAdvancedClicked()">Advanced</a></p>
 <div id="advancedOptions" style="display: none">
@@ -162,6 +164,12 @@ ga('send', 'pageview');
 	<td><input type="range" id="processStepSlider" value="7" min="1" max="7" step="1"/></td>
 	<td id="processStepValue"></td>
 	<td class="helpTip">Check the output of different stages of the algorithm.</td>
+</tr>
+<tr>
+	<td class="advancedName">Blur Radius:</td>
+	<td><input type="range" id="gaussianBlurSlider" value="0" min="0" max="6" step="1"/></td>
+	<td id="gaussianBlurValue"></td>
+	<td class="helpTip">Increase this to eliminate noise in the input image.</td>
 </tr>
 <tr>
 	<td class="advancedName">Edge Threshold:</td>
